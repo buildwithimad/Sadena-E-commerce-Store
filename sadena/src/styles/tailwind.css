@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Core layout */
+  --background: #fafaf9;
+  --foreground: #1a1a1a;
+  
+  /* Brand Palette */
+  --primary: #009345;
+  --primary-light: #37B34A;
+  --primary-dark: #336353;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #edf2ed;
+  --secondary-foreground: #1a1a1a;
+  
+  --accent: #26A9E0;
+  --accent-foreground: #ffffff;
+  
+  --muted: #f5f2ed;
+  --muted-foreground: #6b6560;
+  
+  /* UI Elements */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --border: #e8e4df;
+  --input: #e8e4df;
+  --ring: #009345;
+  --radius: 0.5rem;
+  
+  /* Fonts */
+  --font-sans: var(--font-montserrat), sans-serif;
+  --font-display: var(--font-montserrat), sans-serif;
+}
+
+.lang-ar {
+  --font-sans: var(--font-cairo), sans-serif;
+  --font-display: var(--font-cairo), sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .btn-primary {
+    @apply bg-[var(--primary)] text-[var(--primary-foreground)] px-8 py-3.5 text-sm font-medium tracking-widest uppercase rounded-md transition-all duration-200 hover:bg-[var(--primary-dark)] hover:text-[var(--primary-foreground)];
+  }
+
+  .btn-outline {
+    @apply border border-[var(--primary)] text-[var(--primary)] px-8 py-3.5 text-sm font-medium tracking-widest uppercase rounded-md transition-all duration-200 hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)];
+  }
+
+  .product-card-img {
+    @apply overflow-hidden;
+  }
+
+  .product-card-img img {
+    @apply transition-transform duration-500 ease-out;
+  }
+
+  .product-card-img:hover img {
+    @apply scale-105;
+  }
+}
+
+/* Animations & Utilities */
+@keyframes revealUp {
+  0% { opacity: 0; transform: translateY(28px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0px); }
+}
+
+.reveal { opacity: 0; transform: translateY(28px); }
+.reveal.active { animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+.reveal-delay-1 { animation-delay: 0.1s; }
+.reveal-delay-2 { animation-delay: 0.2s; }
+.reveal-delay-3 { animation-delay: 0.3s; }
+.reveal-delay-4 { animation-delay: 0.4s; }
+
+/* Cart Drawer */
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes slideOutRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes slideOutLeft { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+.cart-drawer-enter-ltr { animation: slideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.cart-drawer-enter-rtl { animation: slideInLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+.parallax-hero { will-change: transform; }
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(232, 228, 223, 0.5);
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.overlay-fade { animation: fadeIn 0.2s ease forwards; }
+
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.navbar-scrolled {
+  background: rgba(250, 250, 249, 0.95) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+[dir="rtl"] .font-display { letter-spacing: 0; }
+
+.img-zoom-wrap { overflow: hidden; }
+.img-zoom-wrap img { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.img-zoom-wrap:hover img { transform: scale(1.06); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
