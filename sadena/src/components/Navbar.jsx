@@ -14,13 +14,15 @@ import { useUser } from '@/context/UserContext';
 export default function Navbar({ lang = 'en', categories = [] }) {
   const { user, isLoading: isUserLoading, logout } = useUser();
   const t = TRANSLATIONS?.[lang] || TRANSLATIONS?.en;
+
+
+  console.log("Categories from Navbar", categories)
   
   const { totalItems, openCart } = useCart();
   const cartItemCount = totalItems();
- const { wishlist } = useWishlist();
-const wishlistItems = wishlist.length; 
+  const { wishlist } = useWishlist();
+  const wishlistItems = wishlist.length; 
 
-  
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -97,7 +99,14 @@ const wishlistItems = wishlist.length;
     { label: t?.nav?.about || (lang === 'ar' ? 'من نحن' : 'About'), href: `/${lang}/about` },
   ];
 
-  
+  // 🔥 Helper using your EXACT Database Schema (label, label_ar)
+ // 🔥 Bulletproof Category Name Helper
+const getCategoryName = (cat) => {
+  if (lang === 'ar') {
+    return cat?.label_ar || cat?.name_ar || cat?.label;
+  }
+  return cat?.label || cat?.name || cat?.title || 'Unknown Category';
+};
 
   return (
     <>
@@ -119,11 +128,6 @@ const wishlistItems = wishlist.length;
               </Link>
             </div>
 
-
-          
-
-            
-
             {/* CENTER: Desktop Nav */}
             <nav className="hidden md:flex items-center justify-center gap-8 lg:gap-12 flex-1">
               <Link
@@ -144,19 +148,20 @@ const wishlistItems = wishlist.length;
 
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50">
                   <div className="bg-white border border-[var(--border)] shadow-xl p-2 w-64 flex flex-col rounded-2xl overflow-hidden">
+                    {/* Maps through dynamic database categories */}
                     {categories?.map((cat) => (
                       <Link
                         key={cat.id}
-                        href={`/${lang}/products?category=${cat.slug}`}
-                        className="px-4 py-3 text-[13px] font-semibold text-gray-900 hover:text-[var(--primary)] hover:bg-gray-50 rounded-lg transition-colors duration-200 text-start active:bg-gray-100"
+                        href={`/${lang}/products?category=${cat.slug || cat.id}`}
+                        className="block w-full px-4 py-3 text-[13px] font-semibold text-gray-900 hover:text-[var(--primary)] hover:bg-gray-50 rounded-lg transition-colors duration-200 text-start active:bg-gray-100"
                       >
-                        {lang === 'ar' ? cat.label_ar || cat.label : cat.label}
+                        {getCategoryName(cat)}
                       </Link>
                     ))}
                     <div className="h-px bg-gray-100 my-1 mx-2" />
                     <Link
                       href={`/${lang}/products`}
-                      className="px-4 py-3 text-[13px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/5 rounded-lg transition-colors duration-200 text-start active:bg-[var(--primary)]/10"
+                      className="block w-full px-4 py-3 text-[13px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/5 rounded-lg transition-colors duration-200 text-start active:bg-[var(--primary)]/10"
                     >
                       {lang === 'ar' ? 'كل المنتجات' : 'All Products'}
                     </Link>
@@ -228,8 +233,7 @@ const wishlistItems = wishlist.length;
                 )}
               </div>
               
-
-              {/* Wishlist Icon with Transition Loading */}
+              {/* Wishlist Icon */}
               <button onClick={handleWishlistClick} disabled={isPendingWishlist} className="relative p-2 text-[var(--foreground)] transition-colors outline-none active:scale-90 group disabled:opacity-70 disabled:scale-100">
                 {isPendingWishlist ? (
                   <Icon name="ArrowPathIcon" size={24} className="animate-spin text-[var(--primary)]" />
@@ -244,7 +248,7 @@ const wishlistItems = wishlist.length;
                 )}
               </button>
 
-              {/* Cart Icon (Instant Drawer) */}
+              {/* Cart Icon */}
               <button onClick={openCart} className="relative p-2 text-[var(--foreground)] transition-colors outline-none active:scale-90 group">
                 <Icon name="ShoppingBagIcon" size={24} variant="outline" className="group-hover:text-[var(--primary)] transition-colors" />
                 {cartItemCount > 0 && (
@@ -288,11 +292,11 @@ const wishlistItems = wishlist.length;
                 {categories?.map((cat) => (
                   <Link
                     key={cat.id}
-                    href={`/${lang}/products?category=${cat.slug}`}
+                    href={`/${lang}/products?category=${cat.slug || cat.id}`}
                     onClick={() => setMenuOpen(false)}
-                    className="text-sm font-medium text-gray-600 hover:text-[var(--primary)] transition-colors active:opacity-70"
+                    className="block w-full py-1 text-sm font-medium text-gray-600 hover:text-[var(--primary)] transition-colors active:opacity-70"
                   >
-                    {lang === 'ar' ? cat.label_ar || cat.label : cat.label}
+                    {getCategoryName(cat)}
                   </Link>
                 ))}
               </div>

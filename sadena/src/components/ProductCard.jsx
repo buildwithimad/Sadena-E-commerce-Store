@@ -76,6 +76,7 @@ export default function ProductCard({ product, lang = 'en' }) {
     if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
     
     e.preventDefault();
+    e.stopPropagation();
     
     startNavigation(() => {
       router.push(`/${lang}/products/${product?.slug}`);
@@ -83,31 +84,37 @@ export default function ProductCard({ product, lang = 'en' }) {
   };
 
   return (
-    <Link 
-      href={`/${lang}/products/${product?.slug}`} 
-      onClick={handleCardClick}
-      className="group relative block h-full flex flex-col outline-none"
-    >
+    // Replaced outer <Link> with <div> so we can split click areas for Mobile vs Desktop
+    <div className="group relative flex flex-col h-full outline-none">
       
-      {/* LOADING OVERLAY */}
+      {/* LOADING OVERLAY - Covers entire card when navigating */}
       {isNavigating && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-[2px] rounded-md transition-opacity duration-300">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-background/50 backdrop-blur-[2px] rounded-md transition-opacity duration-300">
           <Icon name="ArrowPathIcon" size={36} className="animate-spin text-primary drop-shadow-md" />
         </div>
       )}
 
       {/* Image Container */}
       <div className="relative bg-secondary aspect-[3/4] img-zoom-wrap rounded-md overflow-hidden">
+        
+        {/* DESKTOP-ONLY LINK: Covers the image only on large screens */}
+        <Link 
+          href={`/${lang}/products/${product?.slug}`}
+          onClick={handleCardClick}
+          className="hidden lg:block absolute inset-0 z-10 cursor-pointer"
+          aria-label={name}
+        />
+
         <Image
           src={product?.images?.[0] || '/placeholder.png'}
           alt={name || 'Product'}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 pointer-events-none"
         />
 
         {/* STACKED BADGES (Top Left/Right) */}
-        <div className={`absolute top-3 ${lang === 'ar' ? 'right-3' : 'left-3'} z-10 flex flex-col gap-1.5 items-start`}>
+        <div className={`absolute top-3 ${lang === 'ar' ? 'right-3' : 'left-3'} z-20 flex flex-col gap-1.5 items-start pointer-events-none`}>
           {isBestSeller && (
             <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm bg-black text-white shadow-sm">
               {lang === 'ar' ? 'الأكثر مبيعاً' : 'Best Seller'}
@@ -127,13 +134,16 @@ export default function ProductCard({ product, lang = 'en' }) {
           )}
         </div>
 
-        {/* Wishlist Button */}
-        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="absolute top-2 right-2 rtl:left-2 rtl:right-auto z-10">
-          <WishlistButton product={product} size={16} />
+        {/* Wishlist Button - Increased touch target size with p-3 */}
+        <div 
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
+          className="absolute top-0 right-0 rtl:left-0 rtl:right-auto z-30 p-3 cursor-pointer"
+        >
+          <WishlistButton product={product} size={24} />
         </div>
 
         {/* Quick Add */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">
+        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-30">
           <button
             onClick={handleQuickAdd}
             disabled={isAdding || isNavigating}
@@ -156,8 +166,12 @@ export default function ProductCard({ product, lang = 'en' }) {
         </div>
       </div>
 
-      {/* Info */}
-      <div className="mt-3 flex flex-col flex-1 space-y-1">
+      {/* Info Section - Always a link so mobile users tap text to view product */}
+      <Link 
+        href={`/${lang}/products/${product?.slug}`}
+        onClick={handleCardClick}
+        className="mt-3 flex flex-col flex-1 space-y-1 relative z-10 outline-none"
+      >
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors duration-200 leading-tight line-clamp-1">
             {name}
@@ -205,7 +219,7 @@ export default function ProductCard({ product, lang = 'en' }) {
             )}
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
