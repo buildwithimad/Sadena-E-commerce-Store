@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import ProductCard from '@/components/ui/ProductCard';
+import ProductCard from '@/components/ProductCard';
 import Icon from '@/components/ui/AppIcon';
 import RevealOnScroll from '@/components/RevealOnScroll';
 

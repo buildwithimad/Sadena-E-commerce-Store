@@ -2,11 +2,12 @@ import Link from 'next/link';
 import ProductCard from '@/components/ProductCard';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import Container from '@/components/ui/Container';
-import { getFeatured } from '@/data/products';
 
-export default function FeaturedProducts({ lang, t }) {
+export default function FeaturedProducts({ lang, t, products = [] }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const featured = getFeatured(8);
+  const items = products?.slice(0, 8);
+
+  if (!items?.length) return null;
 
   return (
     <section 
@@ -51,15 +52,10 @@ export default function FeaturedProducts({ lang, t }) {
           </div>
         </RevealOnScroll>
 
-        {/* GRID: Flat, no borders, no shadows (Minimalist Fashion Style) */}
+        {/* GRID: Flat, no borders, no shadows */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-12 sm:gap-x-6 lg:gap-x-8">
-          {featured?.map((product, i) => (
+          {items?.map((product, i) => (
             <RevealOnScroll key={product?.id} delay={Math.min((i % 4) + 1, 4)}>
-              {/* CARD WRAPPER: 
-                - Completely flat, NO shadows, NO borders.
-                - Slight opacity transition on hover.
-                - Forces sharp corners with [&_*]:!rounded-none
-              */}
               <div className="group h-full w-full transition-opacity duration-300 hover:opacity-90 [&_*]:!rounded-none">
                 <ProductCard product={product} lang={lang} />
               </div>

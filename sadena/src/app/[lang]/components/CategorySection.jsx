@@ -2,20 +2,20 @@ import RevealOnScroll from '@/components/RevealOnScroll';
 import Container from '@/components/ui/Container';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CATEGORIES } from '@/data/products';
 
-export default function CategorySection({ lang, t }) {
+// Remove the static import, use the prop passed from HomePage instead
+export default function CategorySection({ lang, t, categories = [] }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
-  // Ensure we show 6 categories for the 6-column grid layout
-  const displayCategories = CATEGORIES?.slice(0, 6);
+  // Ensure we show up to 6 categories for the 6-column grid layout
+  const displayCategories = categories?.slice(0, 6);
 
   return (
     <section
       id="categories"
       dir={dir}
       // Very light greenish-gray background matching the screenshot
-      className="py-16 sm:py-24  relative z-10"
+      className="py-16 sm:py-24 relative z-10"
     >
       <Container>
         {/* HEADER - Brush Stroke Style */}
@@ -27,7 +27,7 @@ export default function CategorySection({ lang, t }) {
             <div className="absolute inset-2 bg-[#6b9e7a] opacity-90 rounded-[40%_60%_50%_50%/40%_50%_40%_60%] blur-[1px]" />
 
             <h2 className="relative z-10 font-display text-xl sm:text-2xl font-bold text-black tracking-tight">
-              {t?.categories?.heading || 'Shop by category'}
+              {t?.categories?.heading || (lang === 'ar' ? 'تسوق حسب القسم' : 'Shop by category')}
             </h2>
           </div>
         </RevealOnScroll>
@@ -37,7 +37,7 @@ export default function CategorySection({ lang, t }) {
           {displayCategories?.map((cat, i) => (
             <RevealOnScroll key={cat?.id} delay={i + 1}>
               <Link
-                href={`/${lang}/category/${cat?.slug || cat?.id}`}
+                href={`/${lang}/products?category=${cat?.slug || cat?.id}`}
                 className="group flex flex-col items-center outline-none"
               >
                 {/* CARD CONTAINER - Two-tone background with center stripe */}
@@ -74,7 +74,7 @@ export default function CategorySection({ lang, t }) {
                   <div className="absolute inset-0 p-4 flex items-center justify-center">
                     <Image
                       src={cat?.image || '/placeholder-category.png'}
-                      alt={cat?.name || 'Category'}
+                      alt={cat?.label || 'Category'}
                       fill
                       sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
                       className="object-contain p-2 sm:p-3 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 drop-shadow-lg"
@@ -84,8 +84,9 @@ export default function CategorySection({ lang, t }) {
 
                 {/* TYPOGRAPHY - Dark blue/teal, placed below the card */}
                 <div className="mt-4 sm:mt-5 text-center px-1">
-                  <h3 className="font-sans font-medium text-[14px] sm:text-[15px] text-[#1a3b47] group-hover:text-[#5c8b5d] transition-colors duration-300 capitalize tracking-tight">
-                    {lang === 'ar' ? cat?.labelAr : cat?.label}
+                  <h3 className="font-sans font-bold text-[14px] sm:text-[15px] text-[#1a3b47] group-hover:text-[#5c8b5d] transition-colors duration-300 capitalize tracking-tight">
+                    {/* Changed to label_ar to match your database schema */}
+                    {lang === 'ar' ? cat?.label_ar || cat?.label : cat?.label}
                   </h3>
                 </div>
               </Link>

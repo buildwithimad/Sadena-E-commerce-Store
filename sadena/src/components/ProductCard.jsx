@@ -1,167 +1,209 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/store/useCartStore';
 import { useWishlist } from '@/context/WishlistContext';
 import Icon from '@/components/ui/AppIcon';
 import { formatPriceSAR, TRANSLATIONS } from '@/data/products';
+import WishlistButton from '@/components/ui/WishlistButton';
 
 export default function ProductCard({ product, lang = 'en' }) {
   const t = TRANSLATIONS?.[lang]?.featured || TRANSLATIONS?.en?.featured;
+  const router = useRouter();
   const { addItem, openCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  
+  // UI States
+  const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  
+  // Navigation Transition State
+  const [isNavigating, startNavigation] = useTransition();
 
-  const name = lang === 'ar' ? product?.nameAr || product?.name : product?.name;
-  const badge = product?.isOnSale
-    ? lang === 'ar'
-      ? 'عرض'
-      : 'Offer'
-    : product?.isBestSeller
-      ? lang === 'ar'
-        ? 'الأكثر مبيعاً'
-        : 'Best Seller'
-      : product?.isFeatured
-        ? lang === 'ar'
-          ? 'مميز'
-          : 'Featured'
-        : null;
-  const price = product?.discountPrice ?? product?.price;
+  // Safely handle varying database key formats (camelCase vs snake_case)
+  const name = lang === 'ar' ? product?.name_ar || product?.nameAr || product?.name : product?.name;
+  const shortDesc = lang === 'ar' ? product?.short_description_ar || product?.shortDescriptionAr || product?.short_description || product?.shortDescription : product?.short_description || product?.shortDescription;
+  
+  // Pricing Logic
+  const originalPrice = product?.price;
+  const discountPrice = product?.discount_price || product?.discountPrice;
+  const currentPrice = discountPrice ?? originalPrice;
+  
+  // Badge Logic - Now independent so they can stack!
+  const isOnSale = product?.is_on_sale || product?.isOnSale || !!discountPrice;
+  const isBestSeller = product?.is_best_seller || product?.isBestSeller;
+  const isFeatured = product?.is_featured || product?.isFeatured;
 
-  const handleQuickAdd = (e) => {
+  // Calculate discount percentage if on sale
+  const discountPercentage = (isOnSale && originalPrice && discountPrice && originalPrice > discountPrice)
+    ? Math.round(((originalPrice - discountPrice) / originalPrice) * 100)
+    : null;
+
+  // Add to Cart Logic
+  const handleQuickAdd = async (e) => {
     e?.preventDefault();
+    e?.stopPropagation();
+
+    if (isAdding || added || isNavigating) return;
+
+    setIsAdding(true);
+
+    // Small simulated delay for premium UX feel
+    await new Promise(resolve => setTimeout(resolve, 400));
+
     addItem({
       id: product?.id,
-      name: lang === 'ar' ? product?.nameAr || product?.name : product?.name,
-      price,
-      image: product?.images?.[0],
+      name: name,
+      price: currentPrice,
+      image: product?.images?.[0] || '/placeholder.png',
       sku: product?.sku,
     });
+
+    setIsAdding(false);
     setAdded(true);
     openCart();
+
+    // Reset button after 2 seconds
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const handleWishlistToggle = (e) => {
-    e?.preventDefault();
-    if (isInWishlist(product?.id)) {
-      removeFromWishlist(product?.id);
-    } else {
-      addToWishlist(product);
-    }
+  // Handle Card Click (Route Transition)
+  const handleCardClick = (e) => {
+    // Allow standard "open in new tab" behavior without showing loading state
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    
+    e.preventDefault();
+    
+    startNavigation(() => {
+      router.push(`/${lang}/products/${product?.slug}`);
+    });
   };
 
   return (
-    <Link href={`/${lang}/products/${product?.id}`} className="group block">
-      {/* Image */}
+    <Link 
+      href={`/${lang}/products/${product?.slug}`} 
+      onClick={handleCardClick}
+      className="group relative block h-full flex flex-col outline-none"
+    >
+      
+      {/* LOADING OVERLAY */}
+      {isNavigating && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-[2px] rounded-md transition-opacity duration-300">
+          <Icon name="ArrowPathIcon" size={36} className="animate-spin text-primary drop-shadow-md" />
+        </div>
+      )}
+
+      {/* Image Container */}
       <div className="relative bg-secondary aspect-[3/4] img-zoom-wrap rounded-md overflow-hidden">
         <Image
-          src={product?.images?.[0]}
-          alt={name}
+          src={product?.images?.[0] || '/placeholder.png'}
+          alt={name || 'Product'}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover"
+          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />
 
-        {/* Badge */}
-        {badge && (
-          <span
-            className={`absolute top-3 ${lang === 'ar' ? 'right-3' : 'left-3'} px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-md ${
-              product?.isOnSale ? 'bg-red-600 text-white' : 'bg-primary text-primary-foreground'
-            }`}
-          >
-            {badge}
-          </span>
-        )}
+        {/* STACKED BADGES (Top Left/Right) */}
+        <div className={`absolute top-3 ${lang === 'ar' ? 'right-3' : 'left-3'} z-10 flex flex-col gap-1.5 items-start`}>
+          {isBestSeller && (
+            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm bg-black text-white shadow-sm">
+              {lang === 'ar' ? 'الأكثر مبيعاً' : 'Best Seller'}
+            </span>
+          )}
+          
+          {isOnSale && (
+            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm bg-red-600 text-white shadow-sm">
+              {lang === 'ar' ? 'تخفيض' : 'Sale'} {discountPercentage ? `-${discountPercentage}%` : ''}
+            </span>
+          )}
+
+          {isFeatured && !isBestSeller && !isOnSale && (
+            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm bg-primary text-primary-foreground shadow-sm">
+              {lang === 'ar' ? 'مميز' : 'Featured'}
+            </span>
+          )}
+        </div>
 
         {/* Wishlist Button */}
-        <button
-          onClick={handleWishlistToggle}
-          className={`absolute top-3 ${lang === 'ar' ? 'left-3' : 'right-3'} w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 ${
-            isInWishlist(product?.id)
-              ? 'bg-red-500 text-white'
-              : 'bg-white/90 backdrop-blur-sm text-muted-foreground hover:text-red-500'
-          }`}
-          aria-label={
-            isInWishlist(product?.id)
-              ? lang === 'ar'
-                ? 'حذف من المفضلة'
-                : 'Remove from wishlist'
-              : lang === 'ar'
-                ? 'أضف إلى المفضلة'
-                : 'Add to wishlist'
-          }
-        >
-          <Icon
-            name="HeartIcon"
-            size={16}
-            variant={isInWishlist(product?.id) ? 'solid' : 'outline'}
-          />
-        </button>
+        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="absolute top-2 right-2 rtl:left-2 rtl:right-auto z-10">
+          <WishlistButton product={product} size={16} />
+        </div>
 
         {/* Quick Add */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">
           <button
             onClick={handleQuickAdd}
-            className="w-full bg-primary/95 backdrop-blur-sm text-primary-foreground py-3.5 text-xs font-semibold tracking-widest uppercase rounded-b-md hover:bg-accent hover:text-accent-foreground transition-colors duration-200 flex items-center justify-center gap-2"
+            disabled={isAdding || isNavigating}
+            className="w-full bg-primary/95 backdrop-blur-sm text-primary-foreground py-3.5 text-xs font-semibold tracking-widest uppercase rounded-b-md hover:bg-accent hover:text-accent-foreground transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-80"
           >
-            {added ? (
+            {isAdding ? (
+              <Icon name="ArrowPathIcon" size={14} className="animate-spin" />
+            ) : added ? (
               <>
                 <Icon name="CheckIcon" size={14} variant="outline" />
-                {TRANSLATIONS?.[lang]?.productDetail?.addedToCart || 'Added'}
+                {TRANSLATIONS?.[lang]?.productDetail?.addedToCart || (lang === 'ar' ? 'تمت الإضافة' : 'Added')}
               </>
             ) : (
               <>
                 <Icon name="ShoppingBagIcon" size={14} variant="outline" />
-                {t?.quickAdd}
+                {t?.quickAdd || (lang === 'ar' ? 'أضف للسلة' : 'Quick Add')}
               </>
             )}
           </button>
         </div>
       </div>
+
       {/* Info */}
-      <div className="mt-3 space-y-1">
+      <div className="mt-3 flex flex-col flex-1 space-y-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors duration-200 leading-tight">
+          <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors duration-200 leading-tight line-clamp-1">
             {name}
           </h3>
         </div>
-        {(product?.shortDescription || product?.shortDescriptionAr) && (
+        
+        {shortDesc && (
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {lang === 'ar'
-              ? product?.shortDescriptionAr || product?.shortDescription
-              : product?.shortDescription}
+            {shortDesc}
           </p>
         )}
 
-        {/* Rating */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 })?.map((_, i) => (
-              <Icon
-                key={i}
-                name="StarIcon"
-                size={10}
-                variant={i < Math.round(product?.rating) ? 'solid' : 'outline'}
-                className={i < Math.round(product?.rating) ? 'text-accent' : 'text-border'}
-              />
-            ))}
-          </div>
-          <span className="text-[10px] text-muted-foreground">({product?.reviewsCount})</span>
-        </div>
-
-        {/* Price */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            {formatPriceSAR(price, lang)}
-          </span>
-          {product?.discountPrice && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formatPriceSAR(product?.price, lang)}
+        <div className="mt-auto pt-2 flex flex-col gap-1">
+          {/* Rating (Yellow Stars) */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: 5 })?.map((_, i) => {
+                const rating = Number(product?.rating) || 0;
+                const isFilled = i < Math.round(rating);
+                return (
+                  <Icon
+                    key={i}
+                    name="StarIcon"
+                    size={10}
+                    variant={isFilled ? 'solid' : 'outline'}
+                    className={isFilled ? 'text-amber-400' : 'text-border'}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              ({product?.reviews_count || product?.reviewsCount || 0})
             </span>
-          )}
+          </div>
+
+          {/* Price */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-semibold ${discountPrice ? 'text-red-600' : 'text-foreground'}`}>
+              {formatPriceSAR(currentPrice, lang)}
+            </span>
+            {discountPrice && (
+              <span className="text-xs text-muted-foreground line-through">
+                {formatPriceSAR(originalPrice, lang)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </Link>

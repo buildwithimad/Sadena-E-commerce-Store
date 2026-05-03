@@ -1,32 +1,164 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/store/useCartStore';
 import Icon from '@/components/ui/AppIcon';
 import { formatPriceSAR } from '@/data/products';
+import { useUser } from "@/context/UserContext";
 
 const FREE_SHIPPING_THRESHOLD = 199;
 
 export default function CheckoutClient({ lang, t }) {
+  const { user } = useUser();
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const { items, totalPrice, clearCart } = useCart();
-  const totalPriceValue = totalPrice();
+
+  // --- 1. Form State & Error State ---
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    street: "",
+    apt: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "Saudi Arabia",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [errors, setErrors] = useState({}); // Tracks invalid fields
+
+  // --- 2. ZUSTAND CART ONLY ---
+  const { items, clearCart } = useCart();
+
+  const totalPriceValue = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const [step, setStep] = useState(1);
   const [guestOrAccount, setGuestOrAccount] = useState('guest');
+  
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderId, setOrderId] = useState(null); // Real order ID
 
   const shippingFree = totalPriceValue >= FREE_SHIPPING_THRESHOLD;
   const shipping = shippingFree ? 0 : 25;
   const orderTotal = totalPriceValue + shipping;
 
-  const handlePlaceOrder = (e) => {
-    e?.preventDefault();
-    setOrderPlaced(true);
-    clearCart();
+  // =========================
+  // AUTO FILL EMAIL & TOGGLE ACCOUNT
+  // =========================
+  useEffect(() => {
+    if (user?.email) {
+      setForm((prev) => ({ ...prev, email: user.email }));
+      setGuestOrAccount('account');
+    }
+  }, [user]);
+
+  // =========================
+  // HANDLE INPUT
+  // =========================
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: null }));
+    }
   };
 
+  // --- 4. Validation Logic ---
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.firstName.trim()) newErrors.firstName = true;
+    if (!form.lastName.trim()) newErrors.lastName = true;
+    if (!form.street.trim()) newErrors.street = true;
+    if (!form.city.trim()) newErrors.city = true;
+    
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) {
+      newErrors.email = true;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // --- 5. Submit Order ---
+  const handlePlaceOrder = async (e) => {
+    e?.preventDefault();
+    setApiError(null);
+
+    // Run Validation
+    if (!validateForm()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!items?.length) return;
+
+    try {
+      setLoading(true);
+      
+      // Dynamic API Payload
+      const orderData = {
+        items,
+        subtotal: totalPriceValue,
+        shipping,
+        total: orderTotal,
+        customer_first_name: form.firstName,
+        customer_last_name: form.lastName,
+        customer_email: form.email,
+        customer_phone: form.phone,
+        shipping_street: form.street,
+        shipping_apt: form.apt,
+        shipping_city: form.city,
+        shipping_state: form.state,
+        shipping_zip: form.zip,
+        shipping_country: form.country,
+      };
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to place order");
+      }
+
+      // 🔥 CLEAR CART (ZUSTAND ONLY)
+      clearCart();
+      
+      setOrderId(data.order?.id || data.id || Math.floor(Math.random() * 90000) + 10000);
+      setOrderPlaced(true);
+
+    } catch (err) {
+      console.error(err);
+      setApiError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper for input classes to show errors
+  const getInputClass = (fieldName) => `w-full bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 transition-colors ${
+    errors[fieldName] ? 'border-red-500 focus:ring-red-500 border-2' : 'border-border focus:ring-accent border'
+  }`;
+
+  // --- Success UI ---
   if (orderPlaced) {
     return (
       <div
@@ -47,7 +179,7 @@ export default function CheckoutClient({ lang, t }) {
           </p>
           <p className="text-xs text-muted-foreground mb-8">
             {lang === 'ar' ? 'رقم الطلب: #SD-2026-' : 'Order #SD-2026-'}
-            {Math.floor(Math.random() * 90000) + 10000}
+            {orderId?.toString().toUpperCase()}
           </p>
           <Link
             href={`/${lang}/products`}
@@ -60,6 +192,7 @@ export default function CheckoutClient({ lang, t }) {
     );
   }
 
+  // --- Empty Cart UI ---
   if (items?.length === 0) {
     return (
       <div
@@ -141,39 +274,53 @@ export default function CheckoutClient({ lang, t }) {
           </div>
         </div>
       </div>
+      
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+          
           {/* Left: Form */}
           <div className="lg:col-span-3 space-y-8">
-            {/* Guest / Account Toggle */}
-            <div className="bg-secondary rounded-md p-5">
-              <p className="text-sm font-medium text-foreground mb-3">
-                {lang === 'ar' ? 'طريقة الشراء' : 'Checkout as'}
-              </p>
-              <div className="flex gap-3">
-                {['guest', 'account']?.map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setGuestOrAccount(mode)}
-                    className={`flex-1 py-2.5 text-sm font-medium border rounded-md transition-all duration-200 ${
-                      guestOrAccount === mode
-                        ? 'border-foreground bg-foreground text-primary-foreground'
-                        : 'border-border text-foreground hover:border-foreground'
-                    }`}
-                  >
-                    {mode === 'guest'
-                      ? lang === 'ar'
-                        ? 'زائر'
-                        : 'Guest'
-                      : lang === 'ar'
-                        ? 'إنشاء حساب'
-                        : 'Create Account'}
-                  </button>
-                ))}
+            
+            {/* API Error Banner */}
+            {apiError && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-md text-red-600 text-sm font-medium">
+                {apiError}
               </div>
-            </div>
+            )}
 
-            <form onSubmit={handlePlaceOrder} className="space-y-6">
+            {/* Guest / Account Toggle */}
+            {!user && (
+              <div className="bg-secondary rounded-md p-5">
+                <p className="text-sm font-medium text-foreground mb-3">
+                  {lang === 'ar' ? 'طريقة الشراء' : 'Checkout as'}
+                </p>
+                <div className="flex gap-3">
+                  {['guest', 'account']?.map((mode) => (
+                    <button
+                      type="button"
+                      key={mode}
+                      onClick={() => setGuestOrAccount(mode)}
+                      className={`flex-1 py-2.5 text-sm font-medium border rounded-md transition-all duration-200 ${
+                        guestOrAccount === mode
+                          ? 'border-foreground bg-foreground text-primary-foreground'
+                          : 'border-border text-foreground hover:border-foreground bg-background'
+                      }`}
+                    >
+                      {mode === 'guest'
+                        ? lang === 'ar'
+                          ? 'زائر'
+                          : 'Guest'
+                        : lang === 'ar'
+                          ? 'تسجيل الدخول'
+                          : 'Login'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-6">
+              
               {/* Contact */}
               <div>
                 <h2 className="font-display text-xl font-medium text-foreground mb-4">
@@ -183,36 +330,43 @@ export default function CheckoutClient({ lang, t }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                        {lang === 'ar' ? 'الاسم الأول' : 'First Name'}
+                        {lang === 'ar' ? 'الاسم الأول' : 'First Name'} *
                       </label>
                       <input
                         type="text"
-                        required
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                        name="firstName"
+                        value={form.firstName}
+                        onChange={handleChange}
+                        className={getInputClass('firstName')}
                         placeholder={lang === 'ar' ? 'نادية' : 'Nadia'}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                        {lang === 'ar' ? 'اسم العائلة' : 'Last Name'}
+                        {lang === 'ar' ? 'اسم العائلة' : 'Last Name'} *
                       </label>
                       <input
                         type="text"
-                        required
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                        name="lastName"
+                        value={form.lastName}
+                        onChange={handleChange}
+                        className={getInputClass('lastName')}
                         placeholder={lang === 'ar' ? 'أوكافور' : 'Okafor'}
                       />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                      {lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+                      {lang === 'ar' ? 'البريد الإلكتروني' : 'Email'} *
                     </label>
                     <input
                       type="email"
-                      required
-                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      className={getInputClass('email')}
                       placeholder={lang === 'ar' ? 'example@email.com' : 'nadia@example.com'}
+                      dir="ltr"
                     />
                   </div>
                   <div>
@@ -221,8 +375,12 @@ export default function CheckoutClient({ lang, t }) {
                     </label>
                     <input
                       type="tel"
-                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      className={getInputClass('phone')}
                       placeholder="+1 (555) 000-0000"
+                      dir="ltr"
                     />
                   </div>
                 </div>
@@ -236,12 +394,14 @@ export default function CheckoutClient({ lang, t }) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                      {lang === 'ar' ? 'العنوان' : 'Street Address'}
+                      {lang === 'ar' ? 'العنوان' : 'Street Address'} *
                     </label>
                     <input
                       type="text"
-                      required
-                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                      name="street"
+                      value={form.street}
+                      onChange={handleChange}
+                      className={getInputClass('street')}
                       placeholder={lang === 'ar' ? '123 شارع الرئيسي' : '123 Main Street'}
                     />
                   </div>
@@ -251,19 +411,25 @@ export default function CheckoutClient({ lang, t }) {
                     </label>
                     <input
                       type="text"
-                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                      name="apt"
+                      value={form.apt}
+                      onChange={handleChange}
+                      className={getInputClass('apt')}
+                      placeholder="Apt 4B"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                        {lang === 'ar' ? 'المدينة' : 'City'}
+                        {lang === 'ar' ? 'المدينة' : 'City'} *
                       </label>
                       <input
                         type="text"
-                        required
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
-                        placeholder={lang === 'ar' ? 'نيويورك' : 'New York'}
+                        name="city"
+                        value={form.city}
+                        onChange={handleChange}
+                        className={getInputClass('city')}
+                        placeholder={lang === 'ar' ? 'الرياض' : 'Riyadh'}
                       />
                     </div>
                     <div>
@@ -272,8 +438,10 @@ export default function CheckoutClient({ lang, t }) {
                       </label>
                       <input
                         type="text"
-                        required
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                        name="state"
+                        value={form.state}
+                        onChange={handleChange}
+                        className={getInputClass('state')}
                         placeholder="NY"
                       />
                     </div>
@@ -283,9 +451,12 @@ export default function CheckoutClient({ lang, t }) {
                       </label>
                       <input
                         type="text"
-                        required
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                        name="zip"
+                        value={form.zip}
+                        onChange={handleChange}
+                        className={getInputClass('zip')}
                         placeholder="10001"
+                        dir="ltr"
                       />
                     </div>
                   </div>
@@ -293,19 +464,24 @@ export default function CheckoutClient({ lang, t }) {
                     <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
                       {lang === 'ar' ? 'الدولة' : 'Country'}
                     </label>
-                    <select className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent">
-                      <option>United States</option>
-                      <option>Canada</option>
-                      <option>United Kingdom</option>
-                      <option>United Arab Emirates</option>
-                      <option>Saudi Arabia</option>
+                    <select 
+                      name="country"
+                      value={form.country}
+                      onChange={handleChange}
+                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="Saudi Arabia">Saudi Arabia</option>
+                      <option value="United Arab Emirates">United Arab Emirates</option>
+                      <option value="United States">United States</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Canada">Canada</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* Payment */}
-              <div>
+              {/* Payment (UI Placeholder) */}
+              <div className="opacity-60 pointer-events-none">
                 <h2 className="font-display text-xl font-medium text-foreground mb-4">
                   {lang === 'ar' ? 'معلومات الدفع' : 'Payment'}
                 </h2>
@@ -317,9 +493,8 @@ export default function CheckoutClient({ lang, t }) {
                     <div className="relative">
                       <input
                         type="text"
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md"
                         placeholder="4242 4242 4242 4242"
-                        maxLength={19}
                       />
                       <Icon
                         name="CreditCardIcon"
@@ -329,50 +504,21 @@ export default function CheckoutClient({ lang, t }) {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                        {lang === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
-                        placeholder="MM / YY"
-                        maxLength={7}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                        CVV
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
-                        placeholder="123"
-                        maxLength={4}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                      {lang === 'ar' ? 'اسم حامل البطاقة' : 'Cardholder Name'}
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border border-border bg-background text-foreground px-4 py-3 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
-                      placeholder={lang === 'ar' ? 'نادية أوكافور' : 'Nadia Okafor'}
-                    />
-                  </div>
                 </div>
               </div>
 
-              {/* Place Order */}
+              {/* Place Order Button */}
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground py-4 text-sm font-semibold tracking-widest uppercase rounded-md transition-all duration-200 hover:bg-accent hover:text-accent-foreground"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground py-4 text-sm font-semibold tracking-widest uppercase rounded-md transition-all duration-200 hover:bg-accent hover:text-accent-foreground disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Icon name="ShieldCheckIcon" size={16} variant="outline" />
-                {lang === 'ar' ? 'تأكيد الطلب' : 'Place Order'} — {formatPriceSAR(orderTotal, lang)}
+                {loading ? (
+                  <Icon name="ArrowPathIcon" size={16} className="animate-spin" />
+                ) : (
+                  <Icon name="ShieldCheckIcon" size={16} variant="outline" />
+                )}
+                {loading ? (lang === 'ar' ? 'جاري المعالجة...' : 'Processing...') : (lang === 'ar' ? 'تأكيد الطلب' : 'Place Order')} — {formatPriceSAR(orderTotal, lang)}
               </button>
 
               <p className="text-center text-xs text-muted-foreground">
@@ -393,11 +539,11 @@ export default function CheckoutClient({ lang, t }) {
               {/* Items */}
               <ul className="space-y-4 mb-5 max-h-64 overflow-y-auto no-scrollbar">
                 {items?.map((item) => (
-                  <li key={`${item?.id}-${item?.sku || ''}`} className="flex gap-3 items-start">
+                  <li key={item.id} className="flex gap-3 items-start">
                     <div className="w-14 h-16 bg-background rounded-md overflow-hidden relative shrink-0">
                       <Image
-                        src={item?.image}
-                        alt={item?.name}
+                        src={item?.image || '/placeholder.png'}
+                        alt={item?.name || 'Product'}
                         fill
                         className="object-cover"
                         sizes="56px"

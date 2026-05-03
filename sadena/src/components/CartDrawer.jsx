@@ -139,7 +139,7 @@ export default function CartDrawer({ lang = 'en' }) {
           ) : (
             <ul className="divide-y divide-[var(--border)]">
               {items?.map((item) => (
-                <li key={`${item?.id}-${item?.sku || ''}`} className="py-5 flex gap-4">
+                <li key={item?.id} className="py-5 flex gap-4">
                   {/* Image - Flat edge, cover */}
                   <div className="w-20 h-24 bg-[var(--secondary)]/30 rounded-none shrink-0 overflow-hidden relative border border-[var(--border)]">
                     <Image
@@ -164,15 +164,11 @@ export default function CartDrawer({ lang = 'en' }) {
                             {item?.name}
                           </p>
                         </Link>
-                        {item?.sku && (
-                          <p className="text-[10px] text-[var(--muted-foreground)] mt-1 font-mono">
-                            {item?.sku}
-                          </p>
-                        )}
+                       
                       </div>
 
                       <button
-                        onClick={() => removeItem(item?.id, item?.sku)}
+                        onClick={() => removeItem(item?.id)}
                         className="shrink-0 p-1 text-[var(--muted-foreground)] hover:text-red-500 transition-colors"
                         aria-label={t?.remove || 'Remove item'}
                       >
@@ -184,7 +180,7 @@ export default function CartDrawer({ lang = 'en' }) {
                       {/* Quantity - Sharp edges */}
                       <div className="flex items-center border border-[var(--border)] rounded-none h-8">
                         <button
-                          onClick={() => updateQuantity(item?.id, item?.sku, item?.quantity - 1)}
+                          onClick={() => updateQuantity(item?.id, item?.quantity - 1)}
                           className="w-8 h-full flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
                           aria-label="Decrease quantity"
                         >
@@ -194,7 +190,7 @@ export default function CartDrawer({ lang = 'en' }) {
                           {item?.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item?.id, item?.sku, item?.quantity + 1)}
+                          onClick={() => updateQuantity(item?.id, item?.quantity + 1)}
                           className="w-8 h-full flex items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
                           aria-label="Increase quantity"
                         >

@@ -2,16 +2,17 @@ import Link from 'next/link';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import Container from '@/components/ui/Container';
 import ProductCard from '@/components/ProductCard';
-import { getBestSellers } from '@/data/products';
 
-export default function BestSellersSection({ lang, t }) {
+export default function BestSellersSection({ lang, t, products = [] }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const items = getBestSellers(4);
+  const items = products?.slice(0, 8);
+
+  if (!items?.length) return null;
 
   return (
     <section 
       dir={dir} 
-      className="py-16 sm:py-24  relative z-10"
+      className="py-16 sm:py-24 relative z-10"
     >
       <Container>
         <RevealOnScroll className="mb-12 sm:mb-16">
@@ -55,11 +56,7 @@ export default function BestSellersSection({ lang, t }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-12 sm:gap-x-6 lg:gap-x-8">
           {items?.map((product, i) => (
             <RevealOnScroll key={product?.id} delay={i + 1}>
-              {/* CARD WRAPPER: 
-                - Completely flat, NO shadows, NO borders, NO background padding.
-                - Slight opacity transition on hover.
-                - Forces sharp corners with [&_*]:!rounded-none
-              */}
+              {/* CARD WRAPPER: Completely flat, NO shadows, NO borders */}
               <div className="group h-full w-full transition-opacity duration-300 hover:opacity-90 [&_*]:!rounded-none">
                 <ProductCard product={product} lang={lang} />
               </div>
