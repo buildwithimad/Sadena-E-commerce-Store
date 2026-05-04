@@ -11,7 +11,7 @@ export async function PUT(req, { params }) {
     const body = await req.json()
 
     // ✅ Validate status
-    const allowedStatus = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+    const allowedStatus = ['placed', 'processing', 'shipped', 'delivered', 'cancelled']
 
     if (!allowedStatus.includes(body.status)) {
       return Response.json({ error: 'Invalid status' }, { status: 400 })

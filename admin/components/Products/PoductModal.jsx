@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { uploadImages } from '@/lib/uploadImage';
 
 const defaultFormState = { 
   name: '', name_ar: '', sku: '', price: '', discount_price: '', stock: '', category_id: '',
@@ -26,6 +27,7 @@ export default function ProductModal({
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState(defaultFormState);
   const [imagePreviews, setImagePreviews] = useState(['', '', '', '']);
+  const [imageFiles, setImageFiles] = useState([null, null, null, null])
   
   const fileInputRef0 = useRef(null);
   const fileInputRef1 = useRef(null);
@@ -146,27 +148,32 @@ export default function ProductModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validate()) return;
-    const cleanArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(Boolean) : [];
-    const cleanTags = (str) => str ? str.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    const payload = {
-      ...formData,
-      price: Number(formData.price),
-      discount_price: formData.discount_price ? Number(formData.discount_price) : null,
-      stock: Number(formData.stock) || 0,
-      images: imagePreviews.filter(Boolean),
-      benefits: cleanArray(formData.benefits),
-      benefits_ar: cleanArray(formData.benefits_ar),
-      usage: cleanArray(formData.usage),
-      usage_ar: cleanArray(formData.usage_ar),
-      ingredients: cleanArray(formData.ingredients),
-      ingredients_ar: cleanArray(formData.ingredients_ar),
-      tags: cleanTags(formData.tags),
-    };
-    onSubmit(payload);
-  };
+const handleSubmit = async () => {
+  if (!validate()) return
+
+  // 🔥 Upload new files
+  const validFiles = imageFiles.filter(Boolean)
+
+  let uploadedUrls = []
+  if (validFiles.length > 0) {
+    uploadedUrls = await uploadImages(validFiles)
+  }
+
+  // 🔥 Keep existing images (edit mode) + new ones
+  const existingImages = imagePreviews.filter(
+    (img) => img && img.startsWith('http') // only real URLs
+  )
+
+  const finalImages = [...existingImages, ...uploadedUrls]
+
+  const payload = {
+    ...formData,
+    images: finalImages, // ✅ ONLY real URLs go to backend
+  }
+
+  onSubmit(payload)
+}
 
   const handleWarehouseStockChange = (warehouseId, qty) => {
     const newStockData = [...(formData.stockData || [])];
@@ -180,15 +187,22 @@ export default function ProductModal({
     setFormData({ ...formData, stockData: newStockData });
   };
 
-  const handleImageChange = (index, e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const newPreviews = [...imagePreviews];
-      newPreviews[index] = url;
-      setImagePreviews(newPreviews);
-    }
-  };
+const handleImageChange = (index, e) => {
+  const file = e.target.files[0]
+  if (file) {
+    // ✅ preview (already correct)
+    const previewUrl = URL.createObjectURL(file)
+
+    const newPreviews = [...imagePreviews]
+    newPreviews[index] = previewUrl
+    setImagePreviews(newPreviews)
+
+    // 🔥 STORE REAL FILE (THIS WAS MISSING)
+    const newFiles = [...imageFiles]
+    newFiles[index] = file
+    setImageFiles(newFiles)
+  }
+}
 
   // Premium Form Control Classes
   const inputClass = (err) => `w-full bg-gray-50/50 border ${err ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10'} rounded-xl px-4 py-3 min-h-[44px] text-sm sm:text-base text-gray-900 placeholder:text-gray-400 placeholder:font-normal focus:outline-none transition-all duration-300 shadow-sm shadow-black/[0.02]`;

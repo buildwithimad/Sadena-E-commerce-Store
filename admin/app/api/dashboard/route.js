@@ -16,7 +16,7 @@ export async function GET() {
       supabaseAdmin.from('categories').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('orders').select('*'),
       supabaseAdmin.from('products').select('*').lt('stock', 10),
-      supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }).limit(5)
+      supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }).limit(6)
     ])
 
     const totalProducts = productsCount.count || 0
@@ -26,8 +26,9 @@ export async function GET() {
     // -----------------------------
     // 💰 REVENUE CALCULATIONS
     // -----------------------------
+    // Checks for both total_amount and total to ensure it never misses revenue
     const totalRevenue = ordersData.data?.reduce(
-      (sum, o) => sum + Number(o.total_amount || 0),
+      (sum, o) => sum + Number(o.total_amount || o.total || 0),
       0
     ) || 0
 
@@ -35,7 +36,7 @@ export async function GET() {
 
     const todaySales = ordersData.data?.filter(
       (o) => o.created_at.startsWith(today)
-    ).reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
+    ).reduce((sum, o) => sum + Number(o.total_amount || o.total || 0), 0) || 0
 
     const avgOrderValue = totalOrders
       ? totalRevenue / totalOrders
@@ -48,13 +49,13 @@ export async function GET() {
 
     ordersData.data?.forEach((order) => {
       const date = order.created_at.split('T')[0]
-      salesMap[date] = (salesMap[date] || 0) + Number(order.total_amount || 0)
+      salesMap[date] = (salesMap[date] || 0) + Number(order.total_amount || order.total || 0)
     })
 
-    const salesChart = Object.entries(salesMap).map(([date, total]) => ({
-      date,
-      total
-    }))
+    // Maps the object to an array and sorts it chronologically so the chart renders smoothly
+    const salesChart = Object.entries(salesMap)
+      .map(([date, total]) => ({ date, total }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // -----------------------------
     // 📦 PRODUCT INSIGHTS

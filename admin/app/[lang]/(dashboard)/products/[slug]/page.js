@@ -24,6 +24,8 @@ export default async function ProductPage({ params }) {
     fetchProductStockPerWarehouse(product.id)
   ]);
 
+  console.log("Products from admin products details page", product)
+
   // 🟢 3. Pass EVERYTHING to client
   return (
     <ProductDetailsClient

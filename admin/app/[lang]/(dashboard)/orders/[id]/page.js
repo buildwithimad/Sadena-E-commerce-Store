@@ -11,5 +11,7 @@ export default async function OrderDetailsPage({ params }) {
 
     const order = await getOrderById(id);
 
+    console.log("Order from Order details Page", order)
+
   return <OrderDetailsClient lang={lang} order={order} />;
 }

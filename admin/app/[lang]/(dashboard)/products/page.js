@@ -21,6 +21,8 @@ export default async function ProductsPage({ params, searchParams }) {
   // 🔥 Fetch Warehouses for Stock Allocation
   const warehouses = await getWarehouses();
 
+  console.log("Products from Product Page", products)
+
   return (
     <ProductsClient
       lang={lang}

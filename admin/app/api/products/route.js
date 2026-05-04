@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { uploadImages } from '@/lib/uploadImage'
 
 export async function POST(req) {
   try {
@@ -90,6 +91,7 @@ export async function POST(req) {
       ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
       ingredients_ar: Array.isArray(body.ingredients_ar) ? body.ingredients_ar : [],
 
+      is_published: Boolean(body.is_published),
       is_featured: Boolean(body.is_featured),
       is_best_seller: Boolean(body.is_best_seller),
       is_on_sale: Boolean(body.is_on_sale)

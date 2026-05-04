@@ -66,6 +66,7 @@ export async function PUT(req, { params }) {
       ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
       ingredients_ar: Array.isArray(body.ingredients_ar) ? body.ingredients_ar : [],
 
+      is_published: Boolean(body.is_published),
       is_featured: Boolean(body.is_featured),
       is_best_seller: Boolean(body.is_best_seller),
       is_on_sale: Boolean(body.is_on_sale),
@@ -120,39 +121,62 @@ export async function PUT(req, { params }) {
   }
 }
 
+
 export async function DELETE(req, { params }) {
-
-
-  console.log("PARAMS:", params)
-
-
   const { id } = await params
 
   if (!id) {
     return Response.json({ error: 'Missing product id' }, { status: 400 })
   }
 
-  // 🔥 delete + return deleted row
-  const { data, error } = await supabaseAdmin
-    .from('products')
-    .delete()
-    .eq('id', id)
-    .select()
-    .single()
+  try {
+    // 🟢 1. GET PRODUCT FIRST (to access images)
+    const { data: product, error: fetchError } = await supabaseAdmin
+      .from('products')
+      .select('images')
+      .eq('id', id)
+      .single()
 
-  if (error) {
-    console.error('Delete error:', error)
-    return Response.json({ error }, { status: 500 })
+    if (fetchError) {
+      return Response.json({ error: fetchError.message }, { status: 500 })
+    }
+
+    // 🟢 2. DELETE IMAGES FROM STORAGE
+    if (product.images && product.images.length > 0) {
+      const filePaths = product.images.map((url) => {
+        const parts = url.split('/storage/v1/object/public/')
+        return parts[1] // gives: products/filename.jpg
+      })
+
+      const { error: storageError } = await supabaseAdmin.storage
+        .from('products')
+        .remove(filePaths)
+
+      if (storageError) {
+        console.error('Storage delete error:', storageError)
+      }
+    }
+
+    // 🟢 3. DELETE PRODUCT FROM DB
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      return Response.json({ error: error.message }, { status: 500 })
+    }
+
+    return Response.json({
+      success: true,
+      data,
+      message: 'Product and images deleted successfully'
+    })
+
+  } catch (err) {
+    console.error(err)
+    return Response.json({ error: 'Server error' }, { status: 500 })
   }
-
-  // 🧠 if nothing deleted
-  if (!data) {
-    return Response.json({ error: 'Product not found' }, { status: 404 })
-  }
-
-  return Response.json({
-    success: true,
-    data,
-    message: 'Product deleted successfully'
-  })
 }

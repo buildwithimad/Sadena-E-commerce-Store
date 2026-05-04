@@ -13,6 +13,8 @@ export default async function OrdersPage({ params, searchParams }) {
   // Fetch data server-side
   const { orders, total, totalPages } = await getOrders({ page, limit });
 
+
+
   return (
     <OrdersClient 
       lang={lang} 
