@@ -404,7 +404,7 @@ export const TRANSLATIONS = {
   en: {
     nav: {
       home: 'Home',
-      products: 'Shop',
+      products: 'Products',
       contact: 'Contact',
       cart: 'Cart',
       wishlist: 'Wishlist',
@@ -516,7 +516,7 @@ export const TRANSLATIONS = {
   ar: {
     nav: {
       home: 'الرئيسية',
-      products: 'المتجر',
+      products: 'منتجات',
       contact: 'تواصل معنا',
       cart: 'السلة',
       wishlist: 'المفضلة',

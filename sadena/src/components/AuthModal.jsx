@@ -136,7 +136,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
             </p>
             <button 
               onClick={onClose}
-              className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-black transition-all duration-300 active:scale-95 shadow-md"
+              className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-lg hover:bg-black transition-all duration-300 active:scale-95 shadow-md"
             >
               {t.closeBtn}
             </button>
@@ -172,7 +172,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
                   {t.emailLabel}
                 </label>
-                <div className="flex border border-gray-200 rounded-xl overflow-hidden focus-within:border-green-500 focus-within:ring-4 focus-within:ring-green-500/10 transition-all bg-gray-50 focus-within:bg-white">
+                <div className="flex border border-gray-200 rounded-md overflow-hidden focus-within:border-green-500 focus-within:ring-4 focus-within:ring-green-500/10 transition-all bg-gray-50 focus-within:bg-white">
                   <input 
                     type="email" 
                     value={email}
@@ -189,7 +189,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
               <button 
                 type="submit"
                 disabled={isLoading || !email}
-                className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition-all duration-300 mt-2 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm shadow-green-600/20"
+                className="w-full bg-green-600 text-white font-bold py-3.5 rounded-md hover:bg-green-700 transition-all duration-300 mt-2 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm shadow-green-600/20"
               >
                 {isLoading ? (
                   <Icon name="ArrowPathIcon" size={18} className="animate-spin" />

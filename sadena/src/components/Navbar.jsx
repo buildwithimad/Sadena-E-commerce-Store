@@ -15,9 +15,6 @@ export default function Navbar({ lang = 'en', categories = [] }) {
   const { user, isLoading: isUserLoading, logout } = useUser();
   const t = TRANSLATIONS?.[lang] || TRANSLATIONS?.en;
 
-
-  console.log("Categories from Navbar", categories)
-  
   const { totalItems, openCart } = useCart();
   const cartItemCount = totalItems();
   const { wishlist } = useWishlist();
@@ -99,14 +96,13 @@ export default function Navbar({ lang = 'en', categories = [] }) {
     { label: t?.nav?.about || (lang === 'ar' ? 'من نحن' : 'About'), href: `/${lang}/about` },
   ];
 
-  // 🔥 Helper using your EXACT Database Schema (label, label_ar)
- // 🔥 Bulletproof Category Name Helper
-const getCategoryName = (cat) => {
-  if (lang === 'ar') {
-    return cat?.label_ar || cat?.name_ar || cat?.label;
-  }
-  return cat?.label || cat?.name || cat?.title || 'Unknown Category';
-};
+  // 🔥 Bulletproof Category Name Helper
+  const getCategoryName = (cat) => {
+    if (lang === 'ar') {
+      return cat?.label_ar || cat?.name_ar || cat?.label;
+    }
+    return cat?.label || cat?.name || cat?.title || 'Unknown Category';
+  };
 
   return (
     <>
@@ -147,7 +143,7 @@ const getCategoryName = (cat) => {
                 <span className={`absolute bottom-0 w-full h-[2px] bg-[var(--primary)] scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ${dir === 'rtl' ? 'right-0 origin-right' : 'left-0 origin-left'}`} />
 
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 ease-out z-50">
-                  <div className="bg-white border border-[var(--border)] shadow-xl p-2 w-64 flex flex-col rounded-2xl overflow-hidden">
+                  <div className="bg-white border border-[var(--border)] shadow-xl p-2 w-64 flex flex-col overflow-hidden rounded-2xl">
                     {/* Maps through dynamic database categories */}
                     {categories?.map((cat) => (
                       <Link
@@ -169,7 +165,7 @@ const getCategoryName = (cat) => {
                 </div>
               </div>
 
-              {navLinks.slice(2).map((link) => (
+              {navLinks.slice(1).map((link) => (
                 <Link
                   key={link?.href}
                   href={link?.href}
@@ -207,22 +203,42 @@ const getCategoryName = (cat) => {
                     {/* Premium Profile Dropdown */}
                     {profileDropdownOpen && (
                       <div className={`absolute top-full mt-3 w-56 bg-white border border-[var(--border)] rounded-2xl py-2 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 ${dir === 'rtl' ? 'left-0' : 'right-0'}`}>
+                        
+                        {/* User Email Header */}
                         <div className="px-4 py-3 border-b border-gray-100 mb-1">
                           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-0.5">Account</p>
                           <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
                         </div>
-                        <button
-                          onClick={handleLogoutClick}
-                          disabled={isLoggingOut}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-start outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isLoggingOut ? (
-                            <Icon name="ArrowPathIcon" size={18} className="animate-spin text-red-500" />
-                          ) : (
-                            <Icon name="ArrowRightOnRectangleIcon" size={18} className={dir === 'rtl' ? 'rotate-180' : ''} />
-                          )}
-                          {isLoggingOut ? (lang === 'ar' ? 'جاري الخروج...' : 'Logging out...') : (lang === 'ar' ? 'تسجيل الخروج' : 'Logout')}
-                        </button>
+
+                        {/* 🔥 My Orders Link */}
+                        <div className="p-1">
+                          <Link
+                            href={`/${lang}/order`}
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-[var(--foreground)] hover:bg-gray-50 rounded-lg transition-colors text-start outline-none"
+                          >
+                            <Icon name="InboxIcon" size={18} variant="outline" className="text-[var(--muted-foreground)]" />
+                            {lang === 'ar' ? 'طلباتي' : 'My Orders'}
+                          </Link>
+                        </div>
+
+                        <div className="h-px bg-gray-100 my-1 mx-2" />
+
+                        {/* Logout Button */}
+                        <div className="p-1">
+                          <button
+                            onClick={handleLogoutClick}
+                            disabled={isLoggingOut}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors text-start outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isLoggingOut ? (
+                              <Icon name="ArrowPathIcon" size={18} className="animate-spin text-red-500" />
+                            ) : (
+                              <Icon name="ArrowRightOnRectangleIcon" size={18} className={dir === 'rtl' ? 'rotate-180' : ''} />
+                            )}
+                            {isLoggingOut ? (lang === 'ar' ? 'جاري الخروج...' : 'Logging out...') : (lang === 'ar' ? 'تسجيل الخروج' : 'Logout')}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </>
@@ -233,7 +249,7 @@ const getCategoryName = (cat) => {
                 )}
               </div>
               
-              {/* Wishlist Icon */}
+              {/* Wishlist Icon with Transition Loading */}
               <button onClick={handleWishlistClick} disabled={isPendingWishlist} className="relative p-2 text-[var(--foreground)] transition-colors outline-none active:scale-90 group disabled:opacity-70 disabled:scale-100">
                 {isPendingWishlist ? (
                   <Icon name="ArrowPathIcon" size={24} className="animate-spin text-[var(--primary)]" />
@@ -248,7 +264,7 @@ const getCategoryName = (cat) => {
                 )}
               </button>
 
-              {/* Cart Icon */}
+              {/* Cart Icon (Instant Drawer) */}
               <button onClick={openCart} className="relative p-2 text-[var(--foreground)] transition-colors outline-none active:scale-90 group">
                 <Icon name="ShoppingBagIcon" size={24} variant="outline" className="group-hover:text-[var(--primary)] transition-colors" />
                 {cartItemCount > 0 && (
@@ -308,6 +324,13 @@ const getCategoryName = (cat) => {
               {link?.label}
             </Link>
           ))}
+          
+          {/* 🔥 Mobile Menu "My Orders" (Only shows if logged in) */}
+          {user && (
+            <Link href={`/${lang}/order`} onClick={() => setMenuOpen(false)} className="py-3 text-lg font-bold text-[var(--foreground)] border-b border-gray-100 active:opacity-70">
+              {lang === 'ar' ? 'طلباتي' : 'My Orders'}
+            </Link>
+          )}
         </div>
 
         <div className="mt-auto p-6 bg-gray-50 flex flex-col gap-3">

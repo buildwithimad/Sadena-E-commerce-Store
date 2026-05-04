@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import { TRANSLATIONS } from '@/data/products';
-import TestOrderButton from '@/components/TestOrderButton';
 
 export default function Footer({ lang = 'en' }) {
   const t = TRANSLATIONS?.[lang]?.footer || TRANSLATIONS?.en?.footer;
@@ -16,9 +15,8 @@ export default function Footer({ lang = 'en' }) {
             <Link href={`/${lang}`} className="flex items-center gap-2.5 mb-4">
               <AppLogo size={102} className="brightness-0 invert" />
             </Link>
-            <TestOrderButton />
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">
-              {t?.tagline}
+              {t?.ddtagline}
             </p>
           </div>
 
