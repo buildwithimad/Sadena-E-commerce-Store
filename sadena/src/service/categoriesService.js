@@ -12,6 +12,7 @@ export async function getCategories() {
       slug,
       label,
       label_ar,
+      image,
       created_at
     `)
     .order('created_at', { ascending: true });
@@ -27,6 +28,7 @@ export async function getCategories() {
     slug: c.slug,
     label: c.label || 'Unknown',
     label_ar: c.label_ar || c.label || 'Unknown', // Fallback to English if Arabic is missing
+    image: c.image,
     
     // We keep 'name' here just in case any other part of your app relies on it!
     name: c.label 

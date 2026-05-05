@@ -10,7 +10,7 @@ export async function PUT(req, { params }) {
   try {
     const body = await req.json()
 
-    // ✅ VALIDATION
+    // ✅ 1. VALIDATION
     if (!body.name || !body.price) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -19,62 +19,103 @@ export async function PUT(req, { params }) {
       return Response.json({ error: 'Discount must be less than price' }, { status: 400 })
     }
 
-    // 🔥 SLUG
+    // 🟢 2. GET OLD PRODUCT (To compare images for deletion)
+    const { data: oldProduct } = await supabaseAdmin
+      .from('products')
+      .select('images')
+      .eq('id', id)
+      .single()
+
+    const oldImages = oldProduct?.images || []
+    const incomingImages = Array.isArray(body.images) ? body.images : []
+    
+    // Separate existing URLs from new base64 uploads
+    const existingUrls = incomingImages.filter(img => img.startsWith('http'))
+    const newBase64s = incomingImages.filter(img => img.startsWith('data:image'))
+
+    // 🟢 3. DELETE REMOVED IMAGES FROM STORAGE BUCKET
+    const removedImages = oldImages.filter(oldUrl => !existingUrls.includes(oldUrl))
+    if (removedImages.length > 0) {
+      const filePaths = removedImages.map(url => {
+        const parts = url.split('/storage/v1/object/public/products/')
+        return parts[1]
+      }).filter(Boolean)
+
+      if (filePaths.length > 0) {
+        await supabaseAdmin.storage.from('products').remove(filePaths)
+      }
+    }
+
+    // 🟢 4. UPLOAD NEW IMAGES TO STORAGE BUCKET
+    const finalImages = [...existingUrls]
+    
+    for (const b64 of newBase64s) {
+      const matches = b64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/)
+      if (matches && matches.length === 3) {
+        const mimeType = matches[1]
+        const buffer = Buffer.from(matches[2], 'base64')
+        const ext = mimeType.split('/')[1] || 'png'
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from('products')
+          .upload(fileName, buffer, { contentType: mimeType })
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabaseAdmin.storage.from('products').getPublicUrl(fileName)
+          finalImages.push(publicUrl)
+        } else {
+          console.error("Image upload failed:", uploadError)
+        }
+      }
+    }
+
+    // 🔥 5. SLUG GENERATION (FIXED FOR ARABIC & ENGLISH SUPPORT)
     let slug
     if (body.name) {
       slug = body.name
-        .toLowerCase()
         .trim()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
+        // \p{L} keeps all letters from any language (including Arabic)
+        // \p{N} keeps all numbers
+        .replace(/[^\p{L}\p{N}\s-]/gu, '') 
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .toLowerCase()
     }
 
-    // 📦 TOTAL STOCK
+    // 📦 6. TOTAL STOCK CALCULATION
     const totalStock = body.stockData?.length > 0
       ? body.stockData.reduce((sum, i) => sum + (Number(i.stock) || 0), 0)
       : Number(body.stock) || 0
 
-    // ✅ UPDATE DATA
+    // ✅ 7. PREPARE UPDATE DATA
     const updateData = {
       name: body.name,
       name_ar: body.name_ar || null,
-
       description: body.description || null,
       description_ar: body.description_ar || null,
-
       short_description: body.short_description || null,
       short_description_ar: body.short_description_ar || null,
-
       price: Number(body.price),
       discount_price: body.discount_price ? Number(body.discount_price) : null,
-
-      images: Array.isArray(body.images) ? body.images : [],
-
+      images: finalImages, // Uses the freshly calculated images array
       category_id: body.category_id || null,
       tags: Array.isArray(body.tags) ? body.tags : [],
-
       stock: totalStock,
-
       sku: body.sku || null,
-
       benefits: Array.isArray(body.benefits) ? body.benefits : [],
       benefits_ar: Array.isArray(body.benefits_ar) ? body.benefits_ar : [],
-
       usage: Array.isArray(body.usage) ? body.usage : [],
       usage_ar: Array.isArray(body.usage_ar) ? body.usage_ar : [],
-
       ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
       ingredients_ar: Array.isArray(body.ingredients_ar) ? body.ingredients_ar : [],
-
       is_published: Boolean(body.is_published),
       is_featured: Boolean(body.is_featured),
       is_best_seller: Boolean(body.is_best_seller),
       is_on_sale: Boolean(body.is_on_sale),
-
       ...(slug && { slug })
     }
 
-    // 🟢 UPDATE PRODUCT
+    // 🟢 8. UPDATE PRODUCT IN DB
     const { data: product, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
@@ -86,40 +127,32 @@ export async function PUT(req, { params }) {
       return Response.json({ error: error.message }, { status: 500 })
     }
 
-    // 🟢 UPDATE STOCK
+    // 🟢 9. UPDATE STOCK ALLOCATION
     if (body.stockData) {
-      await supabaseAdmin
-        .from('product_stock')
-        .delete()
-        .eq('product_id', id)
-
+      await supabaseAdmin.from('product_stock').delete().eq('product_id', id)
+      
       if (body.stockData.length > 0) {
         const stockRows = body.stockData.map((item) => ({
           product_id: id,
           warehouse_id: item.warehouse_id,
           stock: Number(item.stock) || 0
         }))
-
-        const { error: stockError } = await supabaseAdmin
-          .from('product_stock')
-          .insert(stockRows)
-
+        const { error: stockError } = await supabaseAdmin.from('product_stock').insert(stockRows)
         if (stockError) {
           return Response.json({ error: stockError.message }, { status: 500 })
         }
       }
     }
 
-    return Response.json({
-      success: true,
-      data: product
-    })
+    return Response.json({ success: true, data: product })
 
   } catch (err) {
     console.error(err)
     return Response.json({ error: 'Server error' }, { status: 500 })
   }
 }
+
+
 
 
 export async function DELETE(req, { params }) {
@@ -144,16 +177,20 @@ export async function DELETE(req, { params }) {
     // 🟢 2. DELETE IMAGES FROM STORAGE
     if (product.images && product.images.length > 0) {
       const filePaths = product.images.map((url) => {
-        const parts = url.split('/storage/v1/object/public/')
-        return parts[1] // gives: products/filename.jpg
-      })
+        // 🔥 FIX: We include '/products/' in the split so we ONLY get the filename!
+        // Example: URL is .../public/products/image123.jpg -> parts[1] becomes "image123.jpg"
+        const parts = url.split('/storage/v1/object/public/products/')
+        return parts[1] 
+      }).filter(Boolean); // Filters out any undefined/null values safely
 
-      const { error: storageError } = await supabaseAdmin.storage
-        .from('products')
-        .remove(filePaths)
+      if (filePaths.length > 0) {
+        const { error: storageError } = await supabaseAdmin.storage
+          .from('products')
+          .remove(filePaths)
 
-      if (storageError) {
-        console.error('Storage delete error:', storageError)
+        if (storageError) {
+          console.error('Storage delete error:', storageError)
+        }
       }
     }
 

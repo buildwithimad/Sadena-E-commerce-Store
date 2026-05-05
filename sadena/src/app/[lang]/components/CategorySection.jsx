@@ -10,6 +10,8 @@ export default function CategorySection({ lang, t, categories = [] }) {
   // Ensure we show up to 6 categories for the 6-column grid layout
   const displayCategories = categories?.slice(0, 6);
 
+  console.log("categories from Category Component", displayCategories)
+
   return (
     <section
       id="categories"
@@ -75,8 +77,8 @@ export default function CategorySection({ lang, t, categories = [] }) {
                     <Image
                       src={cat?.image || '/placeholder-category.png'}
                       alt={cat?.label || 'Category'}
-                      fill
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                     fill
+                     unoptimized
                       className="object-contain p-2 sm:p-3 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 drop-shadow-lg"
                     />
                   </div>

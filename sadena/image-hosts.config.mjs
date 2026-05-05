@@ -23,4 +23,11 @@ export const imageHosts = [
         protocol: 'https',
         hostname: 'i.pravatar.cc',
     },
+
+    // ✅ ADD THIS (Supabase)
+    {
+        protocol: 'https',
+        hostname: 'zlsnfkubvxkytjkbsxeg.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+    },
 ];

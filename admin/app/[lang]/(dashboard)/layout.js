@@ -74,7 +74,7 @@ console.log("user data from layout", data.session.user)
 
   return (
     <div lang={lang} dir={dir}>
-      <div className="bg-gray-50 text-gray-900 antialiased min-h-screen">
+      <div className="bg-[#fafafa] text-gray-900 antialiased min-h-screen">
         
         <AdminShell lang={lang} user={user}>
           {/* Suspense automatically catches any async server components (pages) 

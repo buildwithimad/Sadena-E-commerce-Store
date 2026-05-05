@@ -32,7 +32,6 @@ export default async function ProductsPage({ params, searchParams }) {
 
   // 3. Fetch Categories
   const categories = await getCategories({ lang });
-  console.log('Fetched Categories:', categories); // Debugging log
   
   // 4. Map the Category Slug from the URL to its Database ID
   const activeCategoryObj = categories.find(c => c.slug === categorySlug);
@@ -48,8 +47,6 @@ export default async function ProductsPage({ params, searchParams }) {
     maxPrice,
     sort: sortParam
   });
-
-  console.log('Fetched Products:', products); // Debugging log
 
   return (
     <ProductsClientPage

@@ -52,17 +52,28 @@ export async function POST(req) {
       shipping_street,
       shipping_city,
       shipping_country,
-      lang = "en", // ✅ IMPORTANT
+      payment_method,
+      lang = "en",
     } = body;
 
     // =========================
-    // 🔥 STEP 6 → TOKEN + ORDER NUMBER
+    // 🔥 STEP 6 → VALIDATE PAYMENT METHOD
+    // =========================
+    if (!["cod", "card"].includes(payment_method)) {
+      return Response.json(
+        { error: "Invalid payment method" },
+        { status: 400 }
+      );
+    }
+
+    // =========================
+    // 🔥 STEP 7 → TOKEN + ORDER NUMBER
     // =========================
     const token = crypto.randomBytes(16).toString("hex");
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
     // =========================
-    // 🔥 STEP 7 → INSERT ORDER
+    // 🔥 STEP 8 → INSERT ORDER
     // =========================
     const { data, error } = await supabase
       .from("orders")
@@ -74,15 +85,22 @@ export async function POST(req) {
           shipping,
           total,
           status: "placed",
+
           customer_first_name,
           customer_last_name,
           customer_email,
           customer_phone,
+
           shipping_street,
           shipping_city,
           shipping_country,
+
           access_token: token,
           order_number: orderNumber,
+
+          payment_method,
+          payment_status: "pending",
+          payment_provider: payment_method === "card" ? "avapay" : null,
         },
       ])
       .select()
@@ -94,7 +112,7 @@ export async function POST(req) {
     }
 
     // =========================
-    // 🔥 STEP 8 → SEND EMAIL (NON-BLOCKING)
+    // 🔥 STEP 9 → SEND EMAIL
     // =========================
     sendOrderEmail({
       to: customer_email,
@@ -106,16 +124,41 @@ export async function POST(req) {
     });
 
     // =========================
-    // 🔥 STEP 9 → RESPONSE
+    // 💰 STEP 10 → HANDLE PAYMENT
     // =========================
-    return Response.json({
-      order: data,
-      orderNumber: data.order_number,
-      access_url: `/${lang}/order/${data.order_number}?token=${token}`,
-    });
+
+    // ✅ CASH ON DELIVERY
+    if (payment_method === "cod") {
+      return Response.json({
+        order: data,
+        orderNumber: data.order_number,
+        access_url: `/${lang}/order/${data.order_number}?token=${token}`,
+      });
+    }
+
+    // ✅ CARD (AVAPAY FORM)
+    if (payment_method === "card") {
+      return Response.json({
+        order: data,
+
+        payment: {
+          merchant_id: process.env.AVAPAY_MERCHANT_ID,
+
+          // ⚠️ REQUIRED by Avapay (not ideal, but needed)
+          merchant_password: process.env.AVAPAY_MERCHANT_PASSWORD,
+
+          order_id: data.id,
+          amount: data.total,
+          currency: "SAR",
+
+          callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhook/avapay`,
+        },
+      });
+    }
 
   } catch (err) {
     console.error("ORDER API ERROR:", err);
+
     return Response.json(
       { error: "Something went wrong" },
       { status: 500 }

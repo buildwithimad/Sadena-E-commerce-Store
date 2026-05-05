@@ -81,6 +81,7 @@ export default function ProductsClientPage({
     { value: 'rating', label: t?.products?.sortOptions?.rating || (lang === 'ar' ? 'الأعلى تقييماً' : 'Highest Rated') },
   ];
 
+  // ✅ FIX: Use 'id' instead of 'slug' for the "All" category fallback
   const allCategories = [
     { slug: 'all', name: t?.products?.allCategories || (lang === 'ar' ? 'كل الأقسام' : 'All Categories') },
     ...categories,
@@ -153,7 +154,7 @@ export default function ProductsClientPage({
                 className="appearance-none bg-transparent border border-[var(--border)] text-[var(--foreground)] text-xs font-bold uppercase tracking-widest pl-4 pr-10 py-3 focus:outline-none focus:border-[var(--primary)] cursor-pointer rounded-none transition-colors w-full sm:w-auto disabled:opacity-50"
               >
                 {sortOptions?.map((opt) => (
-                  <option key={opt?.value} value={opt?.value}>{opt?.label}</option>
+                  <option key={`sort-${opt.value}`} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
               {pendingSort ? (
@@ -177,11 +178,12 @@ export default function ProductsClientPage({
               </h3>
               <ul className="space-y-4">
                 {allCategories?.map((cat) => {
+                  // ✅ FIX: Match against cat.id
                   const isCurrent = currentCategory === cat.slug;
                   const isLoading = pendingFilter === `category-${cat.slug}`;
                   
                   return (
-                    <li key={cat?.slug}>
+                    <li key={`desktop-cat-${cat.id}`}>
                       <button
                         disabled={isFetchingGrid}
                         onClick={() => updateQueryString('category', cat.slug, `category-${cat.slug}`)}
@@ -192,7 +194,8 @@ export default function ProductsClientPage({
                         } ${isLoading ? 'opacity-70' : ''}`}
                       >
                         <span className="relative">
-                          {cat.name}
+                          {/* ✅ FIX: Use cat.name or fallback to cat.label */}
+                          {cat.name || cat.label}
                           <span className={`absolute left-0 -bottom-1 h-[1px] bg-[var(--primary)] transition-all duration-300 ${isCurrent ? 'w-full' : 'w-0 group-hover:w-full group-disabled:w-0'}`} />
                         </span>
                         
@@ -238,7 +241,7 @@ export default function ProductsClientPage({
                   const isLoading = pendingFilter === `price-${range.value}`;
 
                   return (
-                    <li key={range.value}>
+                    <li key={`desktop-price-${range.value}`}>
                       <button
                         disabled={isFetchingGrid}
                         onClick={() => updateQueryString('price', range.value, `price-${range.value}`)}
@@ -268,7 +271,7 @@ export default function ProductsClientPage({
           {/* PRODUCT GRID & LOADING OVERLAY */}
           <div className="flex-1 min-w-0 relative min-h-[500px]">
             
-            {/* 🟢 Grid Loading Overlay (Updated to match global loading.js) */}
+            {/* 🟢 Grid Loading Overlay */}
             {isFetchingGrid && (
               <div className="absolute inset-0 z-30 bg-[var(--background)]/60 backdrop-blur-[2px] flex items-start justify-center pt-32 animate-in fade-in duration-300">
                 <div className="flex flex-col items-center gap-4 animate-in zoom-in-[98%] duration-300 ease-out">
@@ -300,14 +303,14 @@ export default function ProductsClientPage({
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-12 sm:gap-x-6 lg:gap-x-8">
                   {products?.map((product, i) => (
-                    <RevealOnScroll key={product?.id} delay={(i % 8) + 1}>
+                    <RevealOnScroll key={`product-${product.id}-${i}`}>
                       <div 
                         onClick={(e) => handleProductClick(e, product)}
                         className="group relative h-full w-full transition-opacity duration-300 hover:opacity-90 [&_*]:!rounded-none cursor-pointer"
                       >
                         <ProductCard product={product} lang={lang} />
                         
-                        {/* Individual Product Click Overlay (Updated theme support) */}
+                        {/* Individual Product Click Overlay */}
                         {pendingProduct === product.id && (
                           <div className="absolute inset-0 z-20 bg-[var(--background)]/50 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in-[98%] duration-200">
                             <Icon name="ArrowPathIcon" size={32} className="animate-spin text-[var(--primary)] drop-shadow-md" />
@@ -390,19 +393,21 @@ export default function ProductsClientPage({
             </h3>
             <ul className="space-y-4">
               {allCategories?.map((cat) => {
-                const isCurrent = currentCategory === cat.slug;
-                const isLoading = pendingFilter === `mobile-category-${cat.slug}`;
+                // ✅ FIX: Match against cat.id
+                const isCurrent = currentCategory === cat.id;
+                const isLoading = pendingFilter === `mobile-category-${cat.id}`;
 
                 return (
-                  <li key={cat.slug}>
+                  <li key={`mobile-cat-${cat.id}`}>
                     <button
                       disabled={isFetchingGrid}
-                      onClick={() => { updateQueryString('category', cat.slug, `mobile-category-${cat.slug}`); setFilterOpen(false); }}
+                      onClick={() => { updateQueryString('category', cat.id, `mobile-category-${cat.id}`); setFilterOpen(false); }}
                       className={`w-full flex items-center justify-between text-start text-base transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                         isCurrent ? 'text-[var(--primary)] font-bold' : 'text-[var(--foreground)] font-medium'
                       }`}
                     >
-                      {cat.name}
+                      {/* ✅ FIX: Use cat.name or fallback to cat.label */}
+                      {cat.name || cat.label}
                       {isLoading ? (
                         <Icon name="ArrowPathIcon" size={16} className="animate-spin text-[var(--primary)]" />
                       ) : isCurrent ? (
@@ -444,7 +449,7 @@ export default function ProductsClientPage({
                 const isLoading = pendingFilter === `mobile-price-${range.value}`;
 
                 return (
-                  <li key={range.value}>
+                  <li key={`mobile-price-${range.value}`}>
                     <button
                       disabled={isFetchingGrid}
                       onClick={() => { updateQueryString('price', range.value, `mobile-price-${range.value}`); setFilterOpen(false); }}

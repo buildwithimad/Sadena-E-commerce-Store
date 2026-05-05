@@ -10,9 +10,17 @@ export async function POST(req) {
       return Response.json({ error: 'Category name is required' }, { status: 400 })
     }
 
+    // 🔥 SLUG GENERATION (Supports English & Arabic)
+    const slug = body.label
+      .trim()
+      .replace(/[^\p{L}\p{N}\s-]/gu, '') // Keep letters/numbers/spaces/hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .toLowerCase()
+
     const categoryData = {
       label: body.label,
       label_ar: body.label_ar || null,
+      slug: slug, // ✅ Added auto-generated slug
       description: body.description || null,
       description_ar: body.description_ar || null,
       image: body.image || null

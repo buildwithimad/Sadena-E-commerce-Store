@@ -1,35 +1,24 @@
+// DeleteProductModal.jsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-export default function DeleteProductModal({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  product, 
-  lang = 'en',
-  isLoading = false 
-}) {
+export default function DeleteProductModal({ isOpen, onClose, onConfirm, product, lang = 'en', isLoading = false }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
-  // --- Animation States ---
   const [render, setRender] = useState(isOpen);
   const [visible, setVisible] = useState(false);
 
-  // Smooth Mount/Unmount Logic
   useEffect(() => {
     if (isOpen) {
       setRender(true);
       document.body.style.overflow = 'hidden';
-      // Slight delay for staging (backdrop first, then modal)
-      requestAnimationFrame(() => {
-        setTimeout(() => setVisible(true), 10);
-      });
+      requestAnimationFrame(() => setTimeout(() => setVisible(true), 10));
     } else {
       setVisible(false);
-      document.body.style.overflow = '';
-      const timer = setTimeout(() => setRender(false), 400); // Wait for exit animation
+      document.body.style.overflow = 'unset';
+      const timer = setTimeout(() => setRender(false), 200); 
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -37,85 +26,37 @@ export default function DeleteProductModal({
   if (!render || !product) return null;
 
   const t = {
-    en: {
-      title: 'Delete Product',
-      message: 'Are you sure you want to delete',
-      warning: 'This action cannot be undone. This will permanently delete the product and remove its data from our servers.',
-      cancel: 'Cancel',
-      delete: 'Delete Product'
-    },
-    ar: {
-      title: 'حذف المنتج',
-      message: 'هل أنت متأكد أنك تريد حذف',
-      warning: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف المنتج نهائياً وإزالة بياناته من خوادمنا.',
-      cancel: 'إلغاء',
-      delete: 'حذف المنتج'
-    }
+    en: { title: 'Delete Product', message: 'Are you sure you want to delete', warning: 'This action cannot be undone. The product and all its variations will be permanently removed from your store.', cancel: 'Cancel', delete: 'Delete' },
+    ar: { title: 'حذف المنتج', message: 'هل أنت متأكد أنك تريد حذف', warning: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف المنتج وجميع متغيراته نهائياً من متجرك.', cancel: 'إلغاء', delete: 'حذف' }
   }[lang];
 
   return (
-    <div dir={dir} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 perspective-1000">
-      
-      {/* Animated Backdrop */}
-      <div 
-        className={`absolute inset-0 bg-gray-900/20 backdrop-blur-md transition-opacity duration-500 ease-out ${visible ? 'opacity-100' : 'opacity-0'}`} 
-        onClick={!isLoading ? onClose : undefined} 
-      />
-
-      {/* Animated Modal Container */}
-      <div 
-        className={`relative bg-white w-full max-w-md flex flex-col rounded-2xl shadow-2xl ring-1 ring-black/5 transform origin-bottom sm:origin-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
-          visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 sm:scale-95 translate-y-full sm:translate-y-8'
-        }`}
-      >
+    <div dir={dir} className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-gray-900/40 backdrop-blur-sm">
+      <div className={`bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden transform transition-all duration-200 ${visible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}`}>
         
-        {/* Loading Overlay (Optional for extra polish) */}
+        {/* Loading Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 z-50 bg-white/50 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-300 rounded-2xl" />
+          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white px-5 py-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+              <Icon name="ArrowPathIcon" size={18} className="animate-spin text-red-500" />
+              <span className="text-[13px] font-bold uppercase tracking-widest text-gray-900">Deleting...</span>
+            </div>
+          </div>
         )}
 
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white z-20">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 tracking-tight">{t.title}</h2>
-          <button 
-            onClick={onClose} 
-            disabled={isLoading}
-            className="p-2 -mr-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200 outline-none cursor-pointer disabled:opacity-50 active:scale-95"
-          >
-            <Icon name="XMarkIcon" size={20} />
-          </button>
+          <button onClick={onClose} disabled={isLoading} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors outline-none disabled:opacity-50"><Icon name="XMarkIcon" size={18} /></button>
         </div>
-
-        <div className="px-6 py-8 bg-white relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-rose-50/50 flex items-center justify-center mb-5 border border-rose-100 ring-4 ring-rose-50 shadow-sm shadow-rose-100/50">
-            <Icon name="ExclamationTriangleIcon" size={24} className="text-rose-600" />
-          </div>
-          <p className="text-gray-900 font-medium mb-2 text-sm sm:text-base">
-            {t.message} <span className="font-bold text-rose-600">"{product.name}"</span>?
-          </p>
-          <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-            {t.warning}
-          </p>
+        <div className="px-6 py-6 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4 border-[6px] border-red-50/50"><Icon name="ExclamationTriangleIcon" size={24} className="text-red-500" /></div>
+          <p className="text-gray-900 font-semibold mb-2 text-[15px]">{t.message} <span className="font-bold text-red-500">"{product.name}"</span>?</p>
+          <p className="text-[13px] text-gray-500 leading-relaxed max-w-[90%]">{t.warning}</p>
         </div>
-
-        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end gap-3 z-20">
-          <button 
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-5 sm:px-6 py-2.5 min-h-[44px] text-xs font-bold tracking-widest uppercase text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 focus:outline-none cursor-pointer disabled:opacity-50 active:scale-95 shadow-sm shadow-black/[0.02]"
-          >
-            {t.cancel}
-          </button>
-          <button 
-            onClick={() => onConfirm(product.id)}
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 min-h-[44px] text-xs font-bold tracking-widest uppercase text-white bg-rose-600 border border-transparent rounded-xl hover:bg-rose-700 shadow-sm shadow-rose-600/20 transition-all duration-200 focus:outline-none cursor-pointer disabled:opacity-50 active:scale-95"
-          >
-            {isLoading ? (
-              <Icon name="ArrowPathIcon" size={16} className="animate-spin" />
-            ) : (
-              <Icon name="TrashIcon" size={16} />
-            )}
-            {t.delete}
+        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end gap-3">
+          <button onClick={onClose} disabled={isLoading} className="px-5 py-2.5 text-[13px] font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 shadow-sm">{t.cancel}</button>
+          <button onClick={() => onConfirm(product.id)} disabled={isLoading} className="flex items-center gap-2 px-6 py-2.5 text-[13px] font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm shadow-red-500/20">
+            <Icon name="TrashIcon" size={14} /> {t.delete}
           </button>
         </div>
       </div>

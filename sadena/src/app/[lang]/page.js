@@ -29,6 +29,8 @@ export default async function HomePage({ params }) {
     getHomeProducts(lang)
   ]);
 
+  console.log("Categories from Home", categories)
+
   return (
     <>
       <HeroSection lang={lang} t={t} />

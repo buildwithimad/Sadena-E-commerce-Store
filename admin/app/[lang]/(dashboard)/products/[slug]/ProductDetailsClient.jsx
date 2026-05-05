@@ -15,60 +15,64 @@ export default function ProductDetailsClient({
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const router = useRouter();
   
-  // States
   const [activeImage, setActiveImage] = useState(product.images?.[0] || '');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
 
-  // Translations
   const translations = {
     en: {
       back: 'Products', edit: 'Edit Product', delete: 'Delete', cancel: 'Cancel', save: 'Save Changes',
-      pricing: 'Pricing & Inventory', price: 'Price (SAR)', discount: 'Discount Price', stock: 'Stock',
+      pricing: 'Pricing & Inventory', price: 'Price (SAR)', discount: 'Discount Price (SAR)', stock: 'Stock',
       totalStock: 'Total Stock', warehouseAlloc: 'Warehouse Allocations',
-      overview: 'Product Overview', sku: 'SKU', name: 'Name (EN)', name_ar: 'Name (AR)', 
+      overview: 'Product Overview', sku: 'SKU', name: 'Product Name (EN)', name_ar: 'Product Name (AR)', 
       content: 'Content & Descriptions', shortDesc: 'Short Description (EN)', shortDesc_ar: 'Short Description (AR)',
       desc: 'Full Description (EN)', desc_ar: 'Full Description (AR)',
       selectCategory: 'Select Category...', category: 'Category', statusText: 'Status',
-      specifications: 'Specifications', tags: 'Tags (Comma separated)',
+      specifications: 'Specifications', tags: 'Tags',
       benefits: 'Benefits (EN)', benefits_ar: 'Benefits (AR)', 
       usage: 'How to Use (EN)', usage_ar: 'How to Use (AR)', 
       ingredients: 'Ingredients (EN)', ingredients_ar: 'Ingredients (AR)',
-      flags: 'Visibility', is_featured: 'Featured', is_best_seller: 'Best Seller', is_on_sale: 'On Sale',
+      flags: 'Product Summary', is_featured: 'Featured', is_best_seller: 'Best Seller', is_on_sale: 'On Sale',
+      imagesTitle: 'Product Images', addImage: 'Add Image',
       noData: 'Not provided.',
       status: { published: 'Published', draft: 'Draft' },
-      validation: { reqName: 'Required', reqPrice: 'Required', invalidDiscount: 'Must be < price' }
+      validation: { reqName: 'Required', reqPrice: 'Required', invalidDiscount: 'Must be < price' },
+      table: { warehouse: 'Warehouse', stock: 'Stock Quantity' },
+      meta: { created: 'Created At', updated: 'Updated At' }
     },
     ar: {
       back: 'المنتجات', edit: 'تعديل المنتج', delete: 'حذف', cancel: 'إلغاء', save: 'حفظ التغييرات',
-      pricing: 'التسعير والمخزون', price: 'السعر (ر.س)', discount: 'سعر التخفيض', stock: 'المخزون',
+      pricing: 'التسعير والمخزون', price: 'السعر (ر.س)', discount: 'سعر التخفيض (ر.س)', stock: 'المخزون',
       totalStock: 'إجمالي المخزون', warehouseAlloc: 'توزيع المستودعات',
-      overview: 'نظرة عامة', sku: 'رمز المنتج', name: 'الاسم (إنجليزي)', name_ar: 'الاسم (عربي)', 
+      overview: 'نظرة عامة على المنتج', sku: 'رمز المنتج', name: 'اسم المنتج (إنجليزي)', name_ar: 'اسم المنتج (عربي)', 
       content: 'المحتوى والوصف', shortDesc: 'وصف قصير (إنجليزي)', shortDesc_ar: 'وصف قصير (عربي)',
       desc: 'وصف كامل (إنجليزي)', desc_ar: 'وصف كامل (عربي)',
       selectCategory: 'اختر القسم...', category: 'القسم', statusText: 'الحالة',
-      specifications: 'المواصفات', tags: 'الوسوم (مفصول بفاصلة)',
+      specifications: 'المواصفات', tags: 'الوسوم',
       benefits: 'الفوائد (إنجليزي)', benefits_ar: 'الفوائد (عربي)', 
       usage: 'الاستخدام (إنجليزي)', usage_ar: 'الاستخدام (عربي)', 
       ingredients: 'المكونات (إنجليزي)', ingredients_ar: 'المكونات (عربي)',
-      flags: 'الظهور', is_featured: 'مميز', is_best_seller: 'الأكثر مبيعاً', is_on_sale: 'تخفيض',
+      flags: 'ملخص المنتج', is_featured: 'مميز', is_best_seller: 'الأكثر مبيعاً', is_on_sale: 'تخفيض',
+      imagesTitle: 'صور المنتج', addImage: 'إضافة صورة',
       noData: 'غير متوفر.',
       status: { published: 'منشور', draft: 'مسودة' },
-      validation: { reqName: 'مطلوب', reqPrice: 'مطلوب', invalidDiscount: 'يجب أن يكون أقل من السعر' }
+      validation: { reqName: 'مطلوب', reqPrice: 'مطلوب', invalidDiscount: 'يجب أن يكون أقل من السعر' },
+      table: { warehouse: 'المستودع', stock: 'كمية المخزون' },
+      meta: { created: 'تاريخ الإنشاء', updated: 'آخر تحديث' }
     }
   };
 
   const t = translations[lang] || translations.en;
 
   const getStatusBadge = (isPublished) => {
-    if (isPublished) return 'bg-[#f0fdf4] text-[#2d4d33] border-[#bbf7d0]';
-    return 'bg-[#fcfdfc] text-[#6b8e70] border-[#e6eee6]';
+    if (isPublished) return 'text-[#21c45d]';
+    return 'text-gray-500';
   };
 
-  const inputClass = (err) => `w-full bg-[#fcfdfc] border ${err ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-[#e6eee6] focus:border-[#5c8b5d] focus:ring-[#5c8b5d]/10'} rounded-lg px-4 py-2.5 text-sm text-[#0a1f10] focus:outline-none focus:bg-white focus:ring-4 transition-all duration-200`;
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-[#6b8e70] mb-2";
+  const inputClass = (err) => `w-full bg-white border ${err ? 'border-red-300 focus:border-red-400 focus:ring-1 focus:ring-red-400' : 'border-gray-200 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d]'} rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none transition-all duration-300`;
+  const labelClass = "block text-xs font-medium text-gray-600 mb-2";
 
   const currentTotalStock = isEditing 
     ? (formData.stockData?.length > 0 ? formData.stockData.reduce((sum, item) => sum + (Number(item.stock) || 0), 0) : Number(formData.stock) || 0)
@@ -78,6 +82,7 @@ export default function ProductDetailsClient({
     setFormData({
       ...product,
       is_published: product.is_published || false,
+      images: product.images || [], 
       stockData: productStock || [], 
       benefits: product.benefits?.join('\n') || '',
       benefits_ar: product.benefits_ar?.join('\n') || '',
@@ -95,6 +100,24 @@ export default function ProductDetailsClient({
     setIsEditing(false);
     setFormData({});
     setErrors({});
+  };
+
+  // Image Handlers
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, images: [...(prev.images || []), reader.result] }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (indexToRemove) => {
+    const newImages = [...formData.images];
+    newImages.splice(indexToRemove, 1);
+    setFormData({ ...formData, images: newImages });
   };
 
   const handleWarehouseStockChange = (warehouseId, qty) => {
@@ -138,7 +161,7 @@ export default function ProductDetailsClient({
         usage: cleanArray(formData.usage), usage_ar: cleanArray(formData.usage_ar),
         ingredients: cleanArray(formData.ingredients), ingredients_ar: cleanArray(formData.ingredients_ar),
         tags: cleanTags(formData.tags),
-        images: Array.isArray(formData.images) ? formData.images : [],
+        images: formData.images || [], 
         stockData: (formData.stockData || []).map((item) => ({
           warehouse_id: typeof item.warehouse_id === 'object' ? item.warehouse_id.id : item.warehouse_id,
           stock: Number(item.stock) || 0
@@ -152,6 +175,11 @@ export default function ProductDetailsClient({
       if (!res.ok) throw new Error(result.error || 'Update failed');
 
       setIsEditing(false);
+      
+      if (payload.images.length > 0 && !payload.images[0].startsWith('data:image')) {
+        setActiveImage(payload.images[0]);
+      }
+
       if (result.data?.slug && result.data.slug !== product.slug) {
         router.replace(`/${lang}/products/${result.data.slug}`);
       } else {
@@ -164,374 +192,489 @@ export default function ProductDetailsClient({
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
-    <div dir={dir} className="bg-[#f8fbf8] min-h-screen text-[#0a1f10] pb-24">
+    <div dir={dir} className="bg-[#f9fafb] min-h-screen text-gray-900 pb-24">
       
       {/* STICKY HEADER */}
-      <div className="bg-white border-b border-[#e6eee6] pt-8 pb-6 mb-8 sticky top-0 z-20">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-[#6b8e70]">
-            <Link href={`/${lang}/products`} className="hover:text-[#0a1f10] transition-colors font-medium">
-              {t.back}
-            </Link>
-            <span className="text-[#e6eee6]">/</span>
-            <span className="text-[#0a1f10] font-semibold truncate max-w-[300px]">{product.name}</span>
+      <div className="bg-[#f9fafb] pt-6 pb-6 mb-2 sticky top-0 z-20 transition-all border-b border-gray-200/50">
+        <div className="max-w-[1400px] mx-auto px-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+              <Link href={`/${lang}/products`} className="hover:text-gray-900 transition-colors cursor-pointer">
+                {t.back}
+              </Link>
+              <span className="text-gray-400">›</span>
+              <span className="text-gray-500 cursor-default">Product Details</span>
+            </div>
+            
+            <h1 className="text-[28px] font-bold text-gray-900 tracking-tight leading-tight mb-2">
+              {product.name}
+            </h1>
+            
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`inline-flex items-center gap-1.5 font-medium ${getStatusBadge(product.is_published)}`}>
+                <span className={`w-2 h-2 rounded-full ${product.is_published ? 'bg-[#21c45d]' : 'bg-gray-400'}`}></span>
+                {product.is_published ? t.status.published : t.status.draft}
+              </span>
+              <span className="text-gray-300">|</span>
+              <span className="text-gray-500 font-medium">{t.sku}: {product.sku || '-'}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-2 sm:mt-0">
             {isEditing ? (
               <>
-                <button onClick={handleCancelClick} disabled={isSaving} className="h-10 inline-flex items-center justify-center bg-white border border-[#e6eee6] text-[#4a6b50] px-5 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-[#f0f6f0] transition-all disabled:opacity-50">
+                <button onClick={handleCancelClick} disabled={isSaving} className="h-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-gray-200 text-gray-700 px-6 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all duration-300 disabled:opacity-50">
                   {t.cancel}
                 </button>
-                <button onClick={handleSaveClick} disabled={isSaving} className="h-10 inline-flex items-center justify-center gap-2 bg-[#5c8b5d] text-white px-6 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-[#4a724b] transition-all disabled:opacity-50 active:scale-95">
-                  {isSaving && <Icon name="ArrowPathIcon" size={14} className="animate-spin" />}
+                <button onClick={handleSaveClick} disabled={isSaving} className="h-[42px] cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-6 text-sm font-medium rounded-xl hover:bg-[#1eb053] transition-all duration-300 disabled:opacity-50 active:scale-95">
+                  {isSaving && <Icon name="ArrowPathIcon" size={16} className="animate-spin" />}
                   {t.save}
                 </button>
               </>
             ) : (
-              <button onClick={handleEditClick} className="h-10 inline-flex items-center justify-center gap-2 bg-[#0a1f10] text-white px-6 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-[#1a3322] transition-all active:scale-95">
-                <Icon name="PencilSquareIcon" size={14} />
-                {t.edit}
-              </button>
+              <>
+                <button onClick={handleCancelClick} className="h-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-gray-200 text-gray-700 px-6 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all duration-300">
+                  {t.cancel}
+                </button>
+                <button onClick={handleEditClick} className="h-[42px] cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-6 text-sm font-medium rounded-xl hover:bg-[#1eb053] transition-all duration-300 active:scale-95">
+                  {t.edit}
+                </button>
+                <button className="h-[42px] w-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition-all duration-300">
+                   <Icon name="TrashIcon" size={18} />
+                </button>
+              </>
             )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
         
-        {/* 1. OVERVIEW (Images + Core Info) */}
-        <div className="bg-white rounded-2xl border border-[#e6eee6] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-12">
-            
-            {/* Image Gallery */}
-            <div className="lg:col-span-4 p-6 border-b lg:border-b-0 lg:border-r rtl:lg:border-l rtl:lg:border-r-0 border-[#e6eee6] bg-[#fcfdfc]">
-              <div className="aspect-square w-full bg-white rounded-xl border border-[#e6eee6] overflow-hidden flex items-center justify-center p-2 mb-4">
-                {activeImage ? (
-                  <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded-lg" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        {/* LEFT COLUMN (70%) */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* 1. PRODUCT OVERVIEW CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <Icon name="BookmarkIcon" size={18} className="text-[#21c45d]" variant="outline" />
+              {t.overview}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className={labelClass}>{t.name}</label>
+                {isEditing ? (
+                  <div>
+                    <input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass(errors.name)} dir="ltr" />
+                    {errors.name && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.name}</p>}
+                  </div>
                 ) : (
-                  <Icon name="PhotoIcon" size={48} className="text-[#e6eee6]" />
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                    {product.name}
+                  </div>
                 )}
               </div>
-              {product.images?.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                  {product.images.map((img, idx) => (
-                    <button 
-                      key={idx} onClick={() => setActiveImage(img)}
-                      className={`w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${activeImage === img ? 'border-[#5c8b5d]' : 'border-transparent hover:border-[#e6eee6]'}`}
-                    >
-                      <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover rounded-md" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Core Details */}
-            <div className="lg:col-span-8 p-6 sm:p-8 flex flex-col justify-center">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#0a1f10] mb-6 flex items-center gap-2">
-                <Icon name="CubeIcon" size={18} className="text-[#88a88f]" />
-                {t.overview}
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                <div>
-                  <label className={labelClass}>{t.name} *</label>
-                  {isEditing ? (
-                    <div>
-                      <input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass(errors.name)} dir="ltr" />
-                      {errors.name && <p className="text-xs text-red-500 mt-1 font-medium">{errors.name}</p>}
-                    </div>
-                  ) : <p className="text-base font-semibold text-[#0a1f10]">{product.name}</p>}
-                </div>
-                
-                <div>
-                  <label className={labelClass}>{t.name_ar}</label>
-                  {isEditing ? (
-                    <input type="text" value={formData.name_ar || ''} onChange={e => setFormData({...formData, name_ar: e.target.value})} className={inputClass()} dir="rtl" />
-                  ) : <p className="text-base font-semibold text-[#0a1f10]" dir="rtl">{product.name_ar || t.noData}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass}>{t.sku}</label>
-                    {isEditing ? (
-                      <input type="text" value={formData.sku || ''} onChange={e => setFormData({...formData, sku: e.target.value})} className={inputClass()} dir="ltr" />
-                    ) : <p className="text-sm font-mono text-[#4a6b50]">{product.sku || '-'}</p>}
+              
+              <div>
+                <label className={labelClass}>{t.name_ar}</label>
+                {isEditing ? (
+                  <input type="text" value={formData.name_ar || ''} onChange={e => setFormData({...formData, name_ar: e.target.value})} className={inputClass()} dir="rtl" />
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-end cursor-default" dir="rtl">
+                    {product.name_ar || ''}
                   </div>
-                  <div>
-                    <label className={labelClass}>{t.statusText}</label>
-                    {isEditing ? (
-                      <select 
-                        value={formData.is_published ? 'true' : 'false'} 
-                        onChange={(e) => setFormData({...formData, is_published: e.target.value === 'true'})} 
-                        className={inputClass()}
-                      >
-                        <option value="true">{t.status.published}</option>
-                        <option value="false">{t.status.draft}</option>
-                      </select>
-                    ) : (
-                      <span className={`inline-flex items-center px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${getStatusBadge(product.is_published)}`}>
-                        {product.is_published ? t.status.published : t.status.draft}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                )}
+              </div>
 
-                <div>
-                  <label className={labelClass}>{t.category}</label>
-                  {isEditing ? (
-                    <select value={formData.category_id || ''} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className={inputClass()}>
+              <div>
+                <label className={labelClass}>{t.sku}</label>
+                {isEditing ? (
+                  <input type="text" value={formData.sku || ''} onChange={e => setFormData({...formData, sku: e.target.value})} className={inputClass()} dir="ltr" />
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                    {product.sku || '-'}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className={labelClass}>{t.category}</label>
+                {isEditing ? (
+                  <div className="relative">
+                    <select value={formData.category_id || ''} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className={`${inputClass()} appearance-none pr-10 cursor-pointer`}>
                       <option value="" disabled>{t.selectCategory}</option>
                       {categories?.map((cat) => (
                         <option key={cat.id} value={cat.id}>{lang === 'ar' ? cat.name_ar || cat.label_ar : cat.name || cat.label}</option>
                       ))}
                     </select>
-                  ) : (
-                    <p className="text-sm text-[#4a6b50]">{product.category_name || t.noData}</p>
-                  )}
-                </div>
+                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                  </div>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-between cursor-default">
+                    {product.category_name || t.noData}
+                    <Icon name="ChevronDownIcon" size={16} className="text-gray-400" />
+                  </div>
+                )}
+              </div>
 
-                <div className="md:col-span-2 pt-4 border-t border-[#e6eee6]">
-                  <label className={labelClass}>{t.flags}</label>
-                  {isEditing ? (
-                    <div className="flex flex-wrap items-center gap-6 mt-3">
-                      <label className="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" checked={formData.is_featured || false} onChange={e => setFormData({...formData, is_featured: e.target.checked})} className="w-4 h-4 text-[#5c8b5d] bg-[#fcfdfc] border-[#e6eee6] rounded focus:ring-[#5c8b5d]" />
-                        <span className="text-sm font-medium text-[#4a6b50]">{t.is_featured}</span>
-                      </label>
-                      <label className="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" checked={formData.is_best_seller || false} onChange={e => setFormData({...formData, is_best_seller: e.target.checked})} className="w-4 h-4 text-[#5c8b5d] bg-[#fcfdfc] border-[#e6eee6] rounded focus:ring-[#5c8b5d]" />
-                        <span className="text-sm font-medium text-[#4a6b50]">{t.is_best_seller}</span>
-                      </label>
-                      <label className="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" checked={formData.is_on_sale || false} onChange={e => setFormData({...formData, is_on_sale: e.target.checked})} className="w-4 h-4 text-[#5c8b5d] bg-[#fcfdfc] border-[#e6eee6] rounded focus:ring-[#5c8b5d]" />
-                        <span className="text-sm font-medium text-[#4a6b50]">{t.is_on_sale}</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {product.is_featured && <span className="px-3 py-1 bg-[#f0f6f0] text-[#2d4d33] text-[10px] font-bold uppercase tracking-widest rounded-md border border-[#d9e6d9]">{t.is_featured}</span>}
-                      {product.is_best_seller && <span className="px-3 py-1 bg-[#fffcf0] text-[#b38a22] text-[10px] font-bold uppercase tracking-widest rounded-md border border-[#fcedc2]">{t.is_best_seller}</span>}
-                      {product.is_on_sale && <span className="px-3 py-1 bg-[#fff5f5] text-[#c95252] text-[10px] font-bold uppercase tracking-widest rounded-md border border-[#ffe0e0]">{t.is_on_sale}</span>}
-                      {!product.is_featured && !product.is_best_seller && !product.is_on_sale && <span className="text-sm text-[#88a88f]">{t.noData}</span>}
-                    </div>
-                  )}
-                </div>
+              <div>
+                <label className={labelClass}>{t.statusText}</label>
+                {isEditing ? (
+                  <div className="relative">
+                    <select 
+                      value={formData.is_published ? 'true' : 'false'} 
+                      onChange={(e) => setFormData({...formData, is_published: e.target.value === 'true'})} 
+                      className={`${inputClass()} appearance-none pr-10 cursor-pointer`}
+                    >
+                      <option value="true">{t.status.published}</option>
+                      <option value="false">{t.status.draft}</option>
+                    </select>
+                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                  </div>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-between cursor-default">
+                    {product.is_published ? t.status.published : t.status.draft}
+                    <Icon name="ChevronDownIcon" size={16} className="text-gray-400" />
+                  </div>
+                )}
+              </div>
 
+              <div>
+                <label className={labelClass}>{t.tags}</label>
+                {isEditing ? (
+                  <input type="text" value={formData.tags || ''} onChange={e => setFormData({...formData, tags: e.target.value})} placeholder="organic, fresh, mint" className={inputClass()} dir="ltr" />
+                ) : (
+                   <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                    {product.tags?.join(', ') || ''}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {/* 2. PRICING & INVENTORY CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <Icon name="TagIcon" size={18} className="text-[#21c45d]" variant="outline" />
+              {t.pricing}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <label className={labelClass}>{t.price}</label>
+                {isEditing ? (
+                  <>
+                    <input type="number" value={formData.price || ''} onChange={e => setFormData({...formData, price: e.target.value})} className={inputClass(errors.price)} dir="ltr" />
+                    {errors.price && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.price}</p>}
+                  </>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                    {product.price}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className={labelClass}>{t.discount}</label>
+                {isEditing ? (
+                  <>
+                    <input type="number" value={formData.discount_price || ''} onChange={e => setFormData({...formData, discount_price: e.target.value})} className={inputClass(errors.discount_price)} dir="ltr" />
+                    {errors.discount_price && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.discount_price}</p>}
+                  </>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                     {product.discount_price || ''}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className={labelClass}>{t.totalStock}</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                  {currentTotalStock}
+                </div>
+              </div>
+            </div>
+
+            {/* Warehouse Allocations Table */}
+            <div>
+              <label className="text-xs font-semibold text-gray-800 block mb-3">
+                {t.warehouseAlloc}
+              </label>
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3">{t.table.warehouse}</th>
+                      <th className="px-4 py-3">{t.table.stock}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {warehouses.length > 0 ? (
+                      warehouses.map((w) => {
+                        const whStock = isEditing 
+                          ? (formData.stockData?.find(s => s.warehouse_id === w.id)?.stock || '')
+                          : (productStock?.find(s => s.warehouse_id === w.id)?.stock || 0);
+
+                        return (
+                          <tr key={w.id} className="bg-white hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-700">
+                              {lang === 'ar' ? w.name_ar || w.name : w.name}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isEditing ? (
+                                <input 
+                                  type="number" min="0" value={whStock} 
+                                  onChange={(e) => handleWarehouseStockChange(w.id, e.target.value)} 
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d] outline-none transition-all" 
+                                  placeholder="0" dir="ltr"
+                                />
+                              ) : (
+                                <span className="text-gray-900">{whStock}</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="2" className="px-4 py-6 text-center text-gray-500 cursor-default">No warehouses configured.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. CONTENT & DESCRIPTIONS CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <Icon name="DocumentTextIcon" size={18} className="text-[#21c45d]" variant="outline" />
+              {t.content}
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <div>
+                  <label className={labelClass}>{t.shortDesc}</label>
+                  {isEditing ? (
+                    <textarea rows={3} value={formData.short_description || ''} onChange={e => setFormData({...formData, short_description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[80px] cursor-default">
+                      {product.short_description || ''}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={labelClass}>{t.desc}</label>
+                  {isEditing ? (
+                    <textarea rows={5} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[120px] cursor-default">
+                      {product.description || ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className={labelClass}>{t.shortDesc_ar}</label>
+                  {isEditing ? (
+                    <textarea rows={3} value={formData.short_description_ar || ''} onChange={e => setFormData({...formData, short_description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[80px] flex justify-end text-right cursor-default" dir="rtl">
+                      {product.short_description_ar || ''}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={labelClass}>{t.desc_ar}</label>
+                  {isEditing ? (
+                    <textarea rows={5} value={formData.description_ar || ''} onChange={e => setFormData({...formData, description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[120px] flex justify-end text-right cursor-default" dir="rtl">
+                      {product.description_ar || ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* 2. PRICING & INVENTORY */}
-        <div className="bg-white rounded-2xl border border-[#e6eee6] p-6 sm:p-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#0a1f10] mb-6 flex items-center gap-2">
-            <Icon name="BanknotesIcon" size={18} className="text-[#5c8b5d]" />
-            {t.pricing}
-          </h2>
+        {/* RIGHT COLUMN (30%) */}
+        <div className="lg:col-span-4 space-y-6">
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <label className={labelClass}>{t.price} *</label>
-              {isEditing ? (
-                <>
-                  <input type="number" value={formData.price || ''} onChange={e => setFormData({...formData, price: e.target.value})} className={inputClass(errors.price)} dir="ltr" />
-                  {errors.price && <p className="text-xs text-red-500 mt-1 font-medium">{errors.price}</p>}
-                </>
-              ) : (
-                <p className={`text-2xl font-bold ${product.is_on_sale ? 'text-[#88a88f] line-through text-lg' : 'text-[#0a1f10]'}`}>{product.price}</p>
-              )}
-            </div>
+          {/* PRODUCT IMAGES CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Icon name="PhotoIcon" size={18} className="text-[#21c45d]" variant="outline" />
+              {t.imagesTitle}
+            </h2>
             
-            <div>
-              <label className={labelClass}>{t.discount}</label>
-              {isEditing ? (
-                <>
-                  <input type="number" value={formData.discount_price || ''} onChange={e => setFormData({...formData, discount_price: e.target.value})} className={inputClass(errors.discount_price)} dir="ltr" />
-                  {errors.discount_price && <p className="text-xs text-red-500 mt-1 font-medium">{errors.discount_price}</p>}
-                </>
-              ) : (
-                product.is_on_sale && product.discount_price ? <p className="text-2xl font-bold text-[#5c8b5d]">{product.discount_price}</p> : <p className="text-sm text-[#88a88f] mt-2">-</p>
-              )}
-            </div>
+            {isEditing ? (
+               <div className="space-y-4">
+                  <div className="aspect-square w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center p-2 cursor-pointer">
+                    {activeImage ? (
+                      <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded-lg mix-blend-multiply" />
+                    ) : (
+                      <Icon name="PhotoIcon" size={48} className="text-gray-300" />
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-4 gap-2">
+                    {formData.images?.map((img, idx) => (
+                      <div key={idx} className={`relative aspect-square rounded-lg border overflow-hidden group bg-gray-50 cursor-pointer ${activeImage === img ? 'border-[#21c45d]' : 'border-gray-200'}`} onClick={() => setActiveImage(img)}>
+                        <img src={img} className="w-full h-full object-cover mix-blend-multiply" alt={`Product ${idx}`} />
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                          className="absolute top-1 right-1 p-1 bg-white/90 text-red-500 rounded text-xs opacity-0 group-hover:opacity-100 transition-all hover:bg-white border border-gray-200 shadow-sm cursor-pointer"
+                        >
+                          <Icon name="TrashIcon" size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
 
-            <div>
-              <label className={labelClass}>{t.totalStock}</label>
-              <div className="flex items-center gap-2 mt-1">
-                <div className={`w-2.5 h-2.5 rounded-full ${currentTotalStock > 10 ? 'bg-[#5c8b5d]' : currentTotalStock > 0 ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                <p className="text-2xl font-bold text-[#0a1f10]">{currentTotalStock}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#fcfdfc] border border-[#e6eee6] p-6 rounded-xl">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-[#6b8e70] block mb-4">
-              {t.warehouseAlloc}
-            </label>
-            {warehouses.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {warehouses.map((w) => {
-                  const whStock = isEditing 
-                    ? (formData.stockData?.find(s => s.warehouse_id === w.id)?.stock || '')
-                    : (productStock?.find(s => s.warehouse_id === w.id)?.stock || 0);
-
-                  return (
-                    <div key={w.id} className="flex items-center justify-between bg-white border border-[#e6eee6] p-4 rounded-lg">
-                      <span className="text-sm font-medium text-[#4a6b50] truncate mr-4">
-                        {lang === 'ar' ? w.name_ar || w.name : w.name}
-                      </span>
-                      {isEditing ? (
-                        <input 
-                          type="number" min="0" value={whStock} 
-                          onChange={(e) => handleWarehouseStockChange(w.id, e.target.value)} 
-                          className="w-24 bg-[#fcfdfc] border border-[#e6eee6] rounded-md px-3 py-1.5 text-sm text-center font-bold text-[#0a1f10] focus:border-[#5c8b5d] focus:ring-1 focus:ring-[#5c8b5d] outline-none" 
-                          placeholder="0" dir="ltr"
-                        />
-                      ) : (
-                        <span className="text-sm font-bold text-[#0a1f10] bg-[#f0f6f0] px-3 py-1.5 rounded-md border border-[#e6eee6]">{whStock}</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                  <label className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#21c45d] hover:border-[#21c45d] transition-all duration-300 cursor-pointer bg-white">
+                    <Icon name="CloudArrowUpIcon" size={24} className="mb-1" />
+                    <span className="text-sm font-medium">{t.addImage}</span>
+                    <span className="text-[10px] text-gray-400 mt-1">JPG, PNG up to 5MB</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+               </div>
             ) : (
-              isEditing ? <input type="number" value={formData.stock || ''} onChange={(e) => setFormData({...formData, stock: e.target.value})} className={inputClass()} placeholder="0" dir="ltr"/> : <p className="text-sm text-[#88a88f]">{t.noData}</p>
+              <div className="space-y-4">
+                <div className="aspect-[4/3] w-full bg-[#f4f6f4] rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center p-4 cursor-pointer">
+                  {activeImage ? (
+                    <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded-lg mix-blend-multiply" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  ) : (
+                    <Icon name="PhotoIcon" size={48} className="text-gray-200" />
+                  )}
+                </div>
+                {product.images?.length > 0 && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {product.images.map((img, idx) => (
+                      <button 
+                        key={idx} onClick={() => setActiveImage(img)}
+                        className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 bg-gray-50 ${activeImage === img ? 'border-[#21c45d]' : 'border-transparent hover:border-gray-200'}`}
+                      >
+                        <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover mix-blend-multiply" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Visual Add Image box even in view mode to match design perfectly */}
+                <div className="w-full py-4 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 bg-white cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Icon name="CloudArrowUpIcon" size={20} className="mb-1" />
+                    <span className="text-sm font-medium text-gray-600">{t.addImage}</span>
+                    <span className="text-[10px] text-gray-400 mt-0.5">JPG, PNG up to 5MB</span>
+                </div>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* 3. CONTENT & DESCRIPTIONS */}
-        <div className="bg-white rounded-2xl border border-[#e6eee6] p-6 sm:p-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#0a1f10] mb-6 flex items-center gap-2">
-            <Icon name="DocumentTextIcon" size={18} className="text-blue-500" />
-            {t.content}
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>{t.shortDesc}</label>
-                {isEditing ? (
-                  <textarea rows={3} value={formData.short_description || ''} onChange={e => setFormData({...formData, short_description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
-                ) : <p className="text-sm text-[#4a6b50] leading-relaxed">{product.short_description || t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.desc}</label>
-                {isEditing ? (
-                  <textarea rows={6} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
-                ) : <p className="text-sm text-[#4a6b50] leading-relaxed">{product.description || t.noData}</p>}
-              </div>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>{t.shortDesc_ar}</label>
-                {isEditing ? (
-                  <textarea rows={3} value={formData.short_description_ar || ''} onChange={e => setFormData({...formData, short_description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
-                ) : <p className="text-sm text-[#4a6b50] leading-relaxed" dir="rtl">{product.short_description_ar || t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.desc_ar}</label>
-                {isEditing ? (
-                  <textarea rows={6} value={formData.description_ar || ''} onChange={e => setFormData({...formData, description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
-                ) : <p className="text-sm text-[#4a6b50] leading-relaxed" dir="rtl">{product.description_ar || t.noData}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* PRODUCT SUMMARY CARD (FLAGS & META) */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-800 mb-6">
+              {t.flags}
+            </h2>
 
-        {/* 4. SPECIFICATIONS (Benefits, Usage, Ingredients) */}
-        <div className="bg-white rounded-2xl border border-[#e6eee6] p-6 sm:p-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#0a1f10] mb-6 flex items-center gap-2">
-            <Icon name="SparklesIcon" size={18} className="text-amber-500" />
-            {t.specifications}
-          </h2>
-
-          <div className="mb-8 pb-8 border-b border-[#e6eee6]">
-            <label className={labelClass}>{t.tags}</label>
-            {isEditing ? (
-              <input type="text" value={formData.tags || ''} onChange={e => setFormData({...formData, tags: e.target.value})} placeholder="organic, fresh, mint" className={inputClass()} dir="ltr" />
-            ) : product.tags?.length > 0 ? (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {product.tags.map((tag, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-[#fcfdfc] border border-[#e6eee6] rounded-md text-[11px] font-bold text-[#4a6b50] uppercase tracking-widest">{tag}</span>
-                ))}
-              </div>
-            ) : <p className="text-sm text-[#88a88f]">{t.noData}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-10">
-            {/* EN Column */}
-            <div className="space-y-8">
-              <div>
-                <label className={labelClass}>{t.benefits}</label>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-gray-600">
+                  <Icon name="StarIcon" size={18} variant="outline" className="text-gray-400" />
+                  <span className="text-sm font-medium cursor-default">{t.is_featured}</span>
+                </div>
                 {isEditing ? (
-                  <textarea rows={4} value={formData.benefits || ''} onChange={e => setFormData({...formData, benefits: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
-                ) : product.benefits?.length > 0 ? (
-                  <ul className="space-y-2 mt-2">
-                    {product.benefits.map((item, i) => <li key={i} className="flex items-start gap-2 text-sm text-[#4a6b50] font-medium"><Icon name="CheckCircleIcon" size={16} className="text-[#5c8b5d] shrink-0 mt-0.5" />{item}</li>)}
-                  </ul>
-                ) : <p className="text-sm text-[#88a88f]">{t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.usage}</label>
-                {isEditing ? (
-                  <textarea rows={4} value={formData.usage || ''} onChange={e => setFormData({...formData, usage: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
-                ) : product.usage?.length > 0 ? (
-                  <ul className="space-y-2 mt-2">
-                    {product.usage.map((item, i) => <li key={i} className="flex items-start gap-2 text-sm text-[#4a6b50] font-medium"><div className="w-1.5 h-1.5 rounded-full bg-[#5c8b5d] shrink-0 mt-1.5" />{item}</li>)}
-                  </ul>
-                ) : <p className="text-sm text-[#88a88f]">{t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.ingredients}</label>
-                {isEditing ? (
-                  <textarea rows={4} value={formData.ingredients || ''} onChange={e => setFormData({...formData, ingredients: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
-                ) : product.ingredients?.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {product.ingredients.map((item, i) => <span key={i} className="px-2.5 py-1 bg-[#f0f6f0] border border-[#e6eee6] rounded-md text-[11px] font-bold text-[#4a6b50]">{item}</span>)}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={formData.is_featured || false} onChange={e => setFormData({...formData, is_featured: e.target.checked})} className="sr-only peer cursor-pointer" />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                  </label>
+                ) : (
+                  <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_featured ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                     <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_featured ? 'left-[18px]' : 'left-[2px]'}`}></div>
                   </div>
-                ) : <p className="text-sm text-[#88a88f]">{t.noData}</p>}
+                )}
               </div>
-            </div>
 
-            {/* AR Column */}
-            <div className="space-y-8">
-              <div>
-                <label className={labelClass}>{t.benefits_ar}</label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-gray-600">
+                  <Icon name="TrophyIcon" size={18} variant="outline" className="text-gray-400" />
+                  <span className="text-sm font-medium cursor-default">{t.is_best_seller}</span>
+                </div>
                 {isEditing ? (
-                  <textarea rows={4} value={formData.benefits_ar || ''} onChange={e => setFormData({...formData, benefits_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
-                ) : product.benefits_ar?.length > 0 ? (
-                  <ul className="space-y-2 mt-2" dir="rtl">
-                    {product.benefits_ar.map((item, i) => <li key={i} className="flex items-start gap-2 text-sm text-[#4a6b50] font-medium"><Icon name="CheckCircleIcon" size={16} className="text-[#5c8b5d] shrink-0 mt-0.5" />{item}</li>)}
-                  </ul>
-                ) : <p className="text-sm text-[#88a88f]" dir="rtl">{t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.usage_ar}</label>
-                {isEditing ? (
-                  <textarea rows={4} value={formData.usage_ar || ''} onChange={e => setFormData({...formData, usage_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
-                ) : product.usage_ar?.length > 0 ? (
-                  <ul className="space-y-2 mt-2" dir="rtl">
-                    {product.usage_ar.map((item, i) => <li key={i} className="flex items-start gap-2 text-sm text-[#4a6b50] font-medium"><div className="w-1.5 h-1.5 rounded-full bg-[#5c8b5d] shrink-0 mt-1.5" />{item}</li>)}
-                  </ul>
-                ) : <p className="text-sm text-[#88a88f]" dir="rtl">{t.noData}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>{t.ingredients_ar}</label>
-                {isEditing ? (
-                  <textarea rows={4} value={formData.ingredients_ar || ''} onChange={e => setFormData({...formData, ingredients_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
-                ) : product.ingredients_ar?.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 mt-2" dir="rtl">
-                    {product.ingredients_ar.map((item, i) => <span key={i} className="px-2.5 py-1 bg-[#f0f6f0] border border-[#e6eee6] rounded-md text-[11px] font-bold text-[#4a6b50]">{item}</span>)}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={formData.is_best_seller || false} onChange={e => setFormData({...formData, is_best_seller: e.target.checked})} className="sr-only peer cursor-pointer" />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                  </label>
+                ) : (
+                   <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_best_seller ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                     <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_best_seller ? 'left-[18px]' : 'left-[2px]'}`}></div>
                   </div>
-                ) : <p className="text-sm text-[#88a88f]" dir="rtl">{t.noData}</p>}
+                )}
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-gray-600">
+                  <Icon name="TagIcon" size={18} variant="outline" className="text-gray-400" />
+                  <span className="text-sm font-medium cursor-default">{t.is_on_sale}</span>
+                </div>
+                {isEditing ? (
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={formData.is_on_sale || false} onChange={e => setFormData({...formData, is_on_sale: e.target.checked})} className="sr-only peer cursor-pointer" />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                  </label>
+                ) : (
+                   <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_on_sale ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                     <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_on_sale ? 'left-[18px]' : 'left-[2px]'}`}></div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 space-y-4">
+                 <div className="flex justify-between items-center text-xs">
+                   <div className="flex items-center gap-2 text-gray-500 cursor-default">
+                     <Icon name="CalendarIcon" size={16} />
+                     {t.meta.created}
+                   </div>
+                   <span className="font-medium text-gray-700 cursor-default">{formatDate(product.created_at)}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                   <div className="flex items-center gap-2 text-gray-500 cursor-default">
+                     <Icon name="ClockIcon" size={16} />
+                     {t.meta.updated}
+                   </div>
+                   <span className="font-medium text-gray-700 cursor-default">{formatDate(product.updated_at)}</span>
+                 </div>
+              </div>
+
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );

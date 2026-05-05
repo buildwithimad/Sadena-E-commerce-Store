@@ -2,27 +2,43 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { uploadImages } from '@/lib/uploadImage';
 
 const defaultFormState = { 
   label: '', label_ar: '', description: '', description_ar: '', image: '' 
 };
 
 export default function CategoryModal({ 
-  isOpen, onClose, onSubmit, category = null, lang = 'en', isLoading = false 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  category = null, 
+  lang = 'en', 
+  isLoading = false,
+  bucketName = 'categories' 
 }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const isEdit = !!category;
 
-  const [activeTab, setActiveTab] = useState('general');
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState(defaultFormState);
-  const [imagePreview, setImagePreview] = useState('');
   
+  // Image States
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageFile, setImageFile] = useState(null); 
+  
+  // Animation States
+  const [render, setRender] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
+      setRender(true);
       document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => setTimeout(() => setVisible(true), 10));
+
       if (category) {
         setFormData({ ...defaultFormState, ...category });
         setImagePreview(category.image || '');
@@ -30,38 +46,46 @@ export default function CategoryModal({
         setFormData(defaultFormState);
         setImagePreview('');
       }
+      setImageFile(null);
       setErrors({});
-      setActiveTab('general');
     } else {
+      setVisible(false);
       document.body.style.overflow = '';
+      const timer = setTimeout(() => setRender(false), 300);
+      return () => clearTimeout(timer);
     }
-    return () => { document.body.style.overflow = ''; };
   }, [isOpen, category]);
 
-  if (!isOpen) return null;
+  if (!render) return null;
 
   const t = {
     en: {
-      title: isEdit ? 'Edit Category' : 'Add New Category',
-      tabs: { general: 'General', arabic: 'Arabic Content', media: 'Media' },
+      title: isEdit ? 'Edit Category' : 'New Category',
       fields: {
-        name: 'Category Name (English)', name_ar: 'Name (Arabic)',
-        desc: 'Description (English)', desc_ar: 'Description (Arabic)',
-        image: 'Category Image'
+        name: 'Name (EN)', name_ar: 'Name (AR)',
+        desc: 'Description (EN)', desc_ar: 'Description (AR)',
+        image: 'Category Thumbnail', imageSub: 'Upload a square image (PNG, JPG)'
       },
-      validation: { reqName: 'Category Name is required' },
-      cancel: 'Cancel', save: 'Save Changes', create: 'Create Category'
+      placeholders: {
+        name: 'e.g., Electronics', name_ar: 'مثال: إلكترونيات',
+        desc: 'Brief description...', desc_ar: 'وصف موجز...'
+      },
+      validation: { reqName: 'Name is required' },
+      cancel: 'Cancel', save: 'Save Category', uploading: 'Saving...'
     },
     ar: {
-      title: isEdit ? 'تعديل القسم' : 'إضافة قسم جديد',
-      tabs: { general: 'عام', arabic: 'المحتوى العربي', media: 'الصورة' },
+      title: isEdit ? 'تعديل القسم' : 'قسم جديد',
       fields: {
-        name: 'اسم القسم (إنجليزي)', name_ar: 'الاسم (عربي)',
+        name: 'الاسم (إنجليزي)', name_ar: 'الاسم (عربي)',
         desc: 'الوصف (إنجليزي)', desc_ar: 'الوصف (عربي)',
-        image: 'صورة القسم'
+        image: 'صورة القسم', imageSub: 'قم برفع صورة مربعة (PNG, JPG)'
       },
-      validation: { reqName: 'اسم القسم مطلوب' },
-      cancel: 'إلغاء', save: 'حفظ', create: 'إنشاء'
+      placeholders: {
+        name: 'e.g., Electronics', name_ar: 'مثال: إلكترونيات',
+        desc: 'Brief description...', desc_ar: 'وصف موجز...'
+      },
+      validation: { reqName: 'الاسم مطلوب' },
+      cancel: 'إلغاء', save: 'حفظ القسم', uploading: 'جاري الحفظ...'
     }
   }[lang];
 
@@ -69,13 +93,26 @@ export default function CategoryModal({
     const newErrors = {};
     if (!formData.label?.trim()) newErrors.label = t.validation.reqName;
     setErrors(newErrors);
-    if (newErrors.label) setActiveTab('general');
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
-    onSubmit({ ...formData, image: imagePreview });
+
+    let finalImageUrl = imagePreview;
+
+    if (imageFile) {
+      const uploadedUrls = await uploadImages([imageFile], bucketName);
+      if (uploadedUrls && uploadedUrls.length > 0) {
+        finalImageUrl = uploadedUrls[0];
+      }
+    }
+
+    if (finalImageUrl && finalImageUrl.startsWith('blob:')) {
+      finalImageUrl = ''; 
+    }
+
+    onSubmit({ ...formData, image: finalImageUrl });
   };
 
   const handleImageChange = (e) => {
@@ -83,93 +120,132 @@ export default function CategoryModal({
     if (file) {
       const url = URL.createObjectURL(file);
       setImagePreview(url);
+      setImageFile(file);
     }
   };
 
-  const inputClass = (err) => `w-full bg-gray-50/50 border ${err ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-green-500 focus:ring-green-500/10'} rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-4 transition-all duration-200`;
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5";
+  const inputClass = (err) => `w-full bg-[#fcfdfc] border ${err ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-[#e6eee6] hover:border-[#d9e6d9] focus:border-[#5c8b5d] focus:ring-[#5c8b5d]/10'} rounded-lg px-4 py-2.5 text-sm text-[#0a1f10] focus:outline-none focus:bg-white focus:ring-2 transition-all duration-200 placeholder:text-[#88a88f]`;
+  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-[#6b8e70] mb-1.5";
 
   return (
-    <div dir={dir} className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/30 backdrop-blur-sm transition-opacity" onClick={!isLoading ? onClose : undefined} />
+    <div dir={dir} className="fixed inset-0 z-[100] flex items-center justify-center p-4 perspective-1000">
+      
+      {/* Backdrop */}
+      <div 
+        className={`absolute inset-0 bg-[#0a1f10]/30 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} 
+        onClick={!isLoading ? onClose : undefined} 
+      />
 
-      <div className="relative bg-white rounded-3xl border border-gray-100 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+      {/* Modal Content */}
+      <div 
+        className={`relative bg-white rounded-2xl border border-[#e6eee6] w-full max-w-xl flex flex-col shadow-2xl transform transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${visible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}`}
+      >
         
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/30 rounded-t-3xl">
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isEdit ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
-              <Icon name={isEdit ? "PencilSquareIcon" : "PlusIcon"} size={16} />
+        {/* Loading Overlay inside Modal */}
+        {isLoading && (
+          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center rounded-2xl animate-in fade-in duration-200">
+            <div className="bg-white px-5 py-3 rounded-lg border border-[#e6eee6] shadow-sm flex items-center gap-3">
+              <Icon name="ArrowPathIcon" size={18} className="animate-spin text-[#5c8b5d]" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[#0a1f10]">{t.uploading}</span>
             </div>
-            <h2 className="text-base font-bold text-gray-900">{t.title}</h2>
           </div>
-          <button onClick={onClose} disabled={isLoading} className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors outline-none disabled:opacity-50">
+        )}
+
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#e6eee6] flex items-center justify-between bg-[#fcfdfc] rounded-t-2xl shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-[#f0f6f0] text-[#5c8b5d] border border-[#d9e6d9] flex items-center justify-center">
+              <Icon name={isEdit ? "PencilSquareIcon" : "FolderPlusIcon"} size={16} />
+            </div>
+            <h2 className="text-base font-bold text-[#0a1f10] tracking-tight">{t.title}</h2>
+          </div>
+          <button onClick={onClose} disabled={isLoading} className="p-1.5 text-[#88a88f] hover:text-[#0a1f10] hover:bg-[#e6eee6] rounded-md transition-colors outline-none disabled:opacity-50">
             <Icon name="XMarkIcon" size={20} />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-6 pt-2 border-b border-gray-100 overflow-x-auto no-scrollbar shrink-0">
-          {['general', 'arabic', 'media'].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-2 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors outline-none ${activeTab === tab ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700'}`}>
-              {t.tabs[tab]}
-            </button>
-          ))}
-        </div>
-
-        {/* Form Body */}
-        <div className="p-6 overflow-y-auto flex-1 no-scrollbar bg-white">
+        {/* Body */}
+        <div className="p-6 overflow-y-auto max-h-[75vh] no-scrollbar">
           
-          {activeTab === 'general' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
+          {/* Image Uploader */}
+          <div className="flex items-center gap-5 mb-8">
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#d9e6d9] bg-[#fcfdfc] flex items-center justify-center cursor-pointer hover:bg-[#f0f6f0] hover:border-[#5c8b5d] transition-all group overflow-hidden shrink-0 shadow-sm"
+            >
+              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
+              {imagePreview ? (
+                <>
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                    <Icon name="PencilIcon" size={20} className="text-[#0a1f10]" />
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center text-[#88a88f] group-hover:text-[#5c8b5d] transition-colors">
+                  <Icon name="PhotoIcon" size={24} />
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-[#0a1f10] mb-1">{t.fields.image}</label>
+              <p className="text-xs text-[#6b8e70] mb-3">{t.fields.imageSub}</p>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[10px] font-bold uppercase tracking-widest text-[#5c8b5d] bg-[#f0f6f0] hover:bg-[#e2f0e3] px-3 py-1.5 rounded-md transition-colors border border-[#d9e6d9]"
+              >
+                Choose File
+              </button>
+            </div>
+          </div>
+
+          {/* Form Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+            {/* English Column */}
+            <div className="space-y-5">
               <div>
                 <label className={labelClass}>{t.fields.name} *</label>
-                <input type="text" value={formData.label || ''} onChange={e => setFormData({...formData, label: e.target.value})} className={inputClass(errors.label)} dir="ltr" />
+                <input type="text" value={formData.label || ''} onChange={e => setFormData({...formData, label: e.target.value})} placeholder={t.placeholders.name} className={inputClass(errors.label)} dir="ltr" />
                 {errors.label && <p className="text-xs text-red-500 mt-1 font-medium">{errors.label}</p>}
               </div>
               <div>
                 <label className={labelClass}>{t.fields.desc}</label>
-                <textarea rows="4" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
+                <textarea rows="3" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} placeholder={t.placeholders.desc} className={`${inputClass()} resize-none`} dir="ltr" />
               </div>
             </div>
-          )}
 
-          {activeTab === 'arabic' && (
-            <div className="space-y-5 animate-in fade-in duration-200" dir="rtl">
+            {/* Arabic Column */}
+            <div className="space-y-5" dir="rtl">
               <div>
                 <label className={labelClass}>{t.fields.name_ar}</label>
-                <input type="text" value={formData.label_ar || ''} onChange={e => setFormData({...formData, label_ar: e.target.value})} className={inputClass()} />
+                <input type="text" value={formData.label_ar || ''} onChange={e => setFormData({...formData, label_ar: e.target.value})} placeholder={t.placeholders.name_ar} className={inputClass()} />
               </div>
               <div>
                 <label className={labelClass}>{t.fields.desc_ar}</label>
-                <textarea rows="4" value={formData.description_ar || ''} onChange={e => setFormData({...formData, description_ar: e.target.value})} className={`${inputClass()} resize-none`} />
+                <textarea rows="3" value={formData.description_ar || ''} onChange={e => setFormData({...formData, description_ar: e.target.value})} placeholder={t.placeholders.desc_ar} className={`${inputClass()} resize-none`} />
               </div>
             </div>
-          )}
-
-          {activeTab === 'media' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div>
-                <label className={labelClass}>{t.fields.image}</label>
-                <div 
-                  onClick={() => fileInputRef.current.click()}
-                  className="relative w-40 h-40 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-green-400 transition-all group overflow-hidden"
-                >
-                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
-                  {imagePreview ? (
-                    <><img src={imagePreview} alt="Preview" className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="ArrowPathIcon" size={24} className="text-white" /></div></>
-                  ) : (<div className="flex flex-col items-center text-gray-400 group-hover:text-green-500 transition-colors"><Icon name="PhotoIcon" size={32} /><span className="text-[10px] font-bold mt-2 uppercase tracking-widest">+ Upload</span></div>)}
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end shrink-0 bg-gray-50/50 rounded-b-3xl gap-2">
-          <button onClick={onClose} disabled={isLoading} className="px-4 py-2 text-xs font-bold tracking-widest uppercase text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-50">{t.cancel}</button>
-          <button onClick={handleSubmit} disabled={isLoading} className="flex items-center gap-2 px-6 py-2 text-xs font-bold tracking-widest uppercase text-white bg-gray-900 rounded-lg hover:bg-black transition-all disabled:opacity-50 shadow-sm">{isLoading && <Icon name="ArrowPathIcon" size={14} className="animate-spin" />}{isEdit ? t.save : t.create}</button>
+        <div className="px-6 py-4 border-t border-[#e6eee6] flex items-center justify-end bg-[#fcfdfc] rounded-b-2xl gap-3 shrink-0">
+          <button 
+            onClick={onClose} 
+            disabled={isLoading} 
+            className="px-4 py-2 min-h-[40px] text-xs font-bold tracking-widest uppercase text-[#4a6b50] bg-white border border-[#e6eee6] rounded-md hover:bg-[#f0f6f0] transition-colors disabled:opacity-50"
+          >
+            {t.cancel}
+          </button>
+          <button 
+            onClick={handleSubmit} 
+            disabled={isLoading} 
+            className="flex items-center justify-center gap-2 px-6 py-2 min-h-[40px] text-xs font-bold tracking-widest uppercase text-white bg-[#5c8b5d] rounded-md hover:bg-[#4a724b] transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm shadow-[#5c8b5d]/20"
+          >
+            {isLoading && <Icon name="ArrowPathIcon" size={14} className="animate-spin" />}
+            {t.save}
+          </button>
         </div>
 
       </div>
