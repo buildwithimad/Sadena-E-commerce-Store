@@ -1,8 +1,20 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { checkAdmin } from '@/lib/auth' // ✅ Import your gatekeeper
 
 // 🟢 CREATE CATEGORY
 export async function POST(req) {
   try {
+    // ==========================================
+    // 1. THE GATEKEEPER (Fail Fast)
+    // ==========================================
+    const adminUser = await checkAdmin();
+    if (!adminUser) {
+      return Response.json({ error: 'Unauthorized: Admins only' }, { status: 401 });
+    }
+
+    // ==========================================
+    // 2. PARSE & VALIDATE
+    // ==========================================
     const body = await req.json()
 
     // ✅ VALIDATION
@@ -17,6 +29,9 @@ export async function POST(req) {
       .replace(/\s+/g, '-') // Replace spaces with hyphens
       .toLowerCase()
 
+    // ==========================================
+    // 3. EXECUTE DATABASE INSERT
+    // ==========================================
     const categoryData = {
       label: body.label,
       label_ar: body.label_ar || null,

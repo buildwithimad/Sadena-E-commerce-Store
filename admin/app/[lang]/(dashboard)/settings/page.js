@@ -1,9 +1,18 @@
-import React from 'react'
+import SettingsClient from './SettingClient';
 
-const SettingPage = () => {
+
+export const revalidate = 0;
+
+export const metadata = {
+  title: 'Settings | Sadena Admin',
+};
+
+export default async function SettingsPage({ params }) {
+  const { lang } = await params;
+
   return (
-    <div>SettingPage</div>
-  )
+    <div className="min-h-screen bg-white">
+      <SettingsClient lang={lang} />
+    </div>
+  );
 }
-
-export default SettingPage

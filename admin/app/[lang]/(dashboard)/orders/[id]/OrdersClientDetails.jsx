@@ -147,7 +147,7 @@ export default function OrderDetailsClient({ lang = 'en', order }) {
                         <div className="flex items-center gap-4">
                           <div className="relative w-16 h-16 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100">
                             {item.image ? (
-                              <Image src={item.image} alt={item.name} fill className="object-cover mix-blend-multiply" />
+                              <Image src={item.image} alt={item.name} fill unoptimized className="object-cover mix-blend-multiply" />
                             ) : (
                               <Icon name="PhotoIcon" size={24} className="absolute inset-0 m-auto text-gray-200" />
                             )}

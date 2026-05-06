@@ -237,7 +237,7 @@ export default function OrdersClient({ lang = 'en', orders = [], total = 0, curr
                         <div className="flex items-center gap-4">
                           <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-50 shrink-0 border border-gray-100 flex items-center justify-center">
                             {firstImage ? (
-                              <Image src={firstImage} alt="Product" fill className="object-cover mix-blend-multiply" sizes="48px" />
+                              <Image src={firstImage} alt="Product" unoptimized fill className="object-cover mix-blend-multiply" sizes="48px" />
                             ) : (
                               <Icon name="PhotoIcon" size={20} className="text-gray-300" />
                             )}

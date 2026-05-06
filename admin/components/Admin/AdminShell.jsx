@@ -18,11 +18,24 @@ export default function AdminShell({ children, lang = 'en', user }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const otherLang = lang === 'en' ? 'ar' : 'en';
 
-  // --- Dynamic User Display Logic ---
-  const userEmail = user?.email || '';
-  const rawName = userEmail ? userEmail.split('@')[0] : 'John Doe';
-  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-  const userInitial = displayName.charAt(0).toUpperCase() || 'J';
+  // --- 🔥 FIXED: Dynamic User Details from Supabase Metadata ---
+  const metadata = user?.user_metadata;
+  
+  // Use first_name and last_name from metadata, fallback to email prefix
+  const firstName = metadata?.first_name || '';
+  const lastName = metadata?.last_name || '';
+  const emailPrefix = user?.email?.split('@')[0] || 'Admin';
+  
+  const displayName = firstName ? `${firstName} ${lastName}`.trim() : emailPrefix;
+  
+  // Get initial for avatar fallback
+  const userInitial = (firstName || emailPrefix).charAt(0).toUpperCase();
+  
+  // Get Avatar URL
+  const userImage = metadata?.avatar_url;
+
+  // Get Role
+  const userRole = metadata?.role || 'admin';
 
   // ------------------------
   // 🌍 Internal Translations
@@ -35,7 +48,6 @@ export default function AdminShell({ children, lang = 'en', user }) {
         categories: "Categories",
         orders: 'Orders',
         products: 'Products',
-        customers: 'Customers',
         warehouse: 'Warehouse',
         settings: 'Settings',
         adminProfile: 'Admins',
@@ -44,7 +56,10 @@ export default function AdminShell({ children, lang = 'en', user }) {
       nav: {
         search: 'Search for orders, products, customers...',
         myProfile: 'My Profile',
-        role: 'Admin'
+      },
+      roles: {
+        admin: 'Administrator',
+        user: 'User'
       }
     },
     ar: {
@@ -54,21 +69,24 @@ export default function AdminShell({ children, lang = 'en', user }) {
         categories: 'الفئات',
         orders: 'الطلبات',
         products: 'المنتجات',
-        customers: 'العملاء',
         warehouse: 'المخزن',
         settings: 'الإعدادات',
-        adminProfile: 'ملف ',
+        adminProfile: 'المسؤولين',
         activityLogs: 'سجلات النشاط'
       },
       nav: {
         search: 'البحث عن الطلبات والمنتجات والعملاء...',
         myProfile: 'ملفي الشخصي',
-        role: 'مسؤول'
+      },
+      roles: {
+        admin: 'مسؤول',
+        user: 'مستخدم'
       }
     }
   };
 
   const t = translations[lang] || translations.en;
+  const displayRole = t.roles[userRole] || userRole;
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -106,9 +124,7 @@ export default function AdminShell({ children, lang = 'en', user }) {
     { name: t.sidebar.orders, icon: 'ClipboardDocumentListIcon', href: `/${lang}/orders` },
     { name: t.sidebar.products, icon: 'CubeIcon', href: `/${lang}/products` },
     { name: t.sidebar.categories, icon: 'Squares2X2Icon', href: `/${lang}/categories` },
-    { name: t.sidebar.customers, icon: 'UsersIcon', href: `/${lang}/customers` },
     { name: t.sidebar.warehouse, icon: 'BuildingStorefrontIcon', href: `/${lang}/warehouse` },
-    
   ];
 
   const adminMenuItems = [
@@ -134,221 +150,127 @@ export default function AdminShell({ children, lang = 'en', user }) {
             : (dir === 'rtl' ? 'translate-x-full' : '-translate-x-full')
         }`}
       >
-        {/* Logo Section */}
         <div className="h-[72px] flex items-center px-6 shrink-0">
           <Link href={`/${lang}`} className="flex items-center gap-2.5 outline-none">
-            <img 
-              src="/logo.png" 
-              alt="Sadena Logo" 
-              className="h-8 w-auto object-contain" 
-            />
+            <img src="/logo.png" alt="Logo" className="h-16 md:h-18 w-auto object-contain" />
           </Link>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden ml-auto text-gray-400 hover:text-gray-900 p-1.5 rounded-lg active:scale-95"
-          >
-            <Icon name="XMarkIcon" size={20} />
-          </button>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-gray-400 p-1.5"><Icon name="XMarkIcon" size={20} /></button>
         </div>
 
-        {/* Main Menu */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-4 pt-6 pb-4 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-4 pt-6 flex flex-col gap-6">
           <nav className="space-y-1.5">
-            {menuItems.map((item) => {
-              const isActive = item.href === `/${lang}` ? pathname === item.href : pathname.startsWith(item.href);
-              const isCurrentlyLoading = loadingPath === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => {
-                    if (!isActive) setLoadingPath(item.href);
-                  }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200 outline-none ${
-                    isActive 
-                      ? 'bg-[#21c45d] text-white shadow-sm shadow-[#21c45d]/20' 
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  {isCurrentlyLoading ? (
-                    <Icon name="ArrowPathIcon" size={20} className={`animate-spin ${isActive ? 'text-white' : 'text-[#21c45d]'}`} />
-                  ) : (
-                    <Icon name={item.icon} size={20} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-white' : 'text-gray-400'} />
-                  )}
-                  <span className="flex-1">{item.name}</span>
-                </Link>
-              );
-            })}
+            {menuItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200 ${
+                  pathname.startsWith(item.href) ? 'bg-[#21c45d] text-white shadow-sm shadow-[#21c45d]/20' : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Icon name={item.icon} size={20} variant={pathname.startsWith(item.href) ? 'solid' : 'outline'} />
+                <span className="flex-1">{item.name}</span>
+              </Link>
+            ))}
           </nav>
 
-          {/* Admin Menu */}
           <div>
             <h3 className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">ADMIN</h3>
             <nav className="space-y-1.5">
-              {adminMenuItems.map((item) => {
-                const isActive = pathname.startsWith(item.href);
-                const isCurrentlyLoading = loadingPath === item.href;
-                
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={(e) => {
-                      if (!isActive) setLoadingPath(item.href);
-                    }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200 outline-none ${
-                      isActive 
-                        ? 'bg-[#21c45d] text-white shadow-sm shadow-[#21c45d]/20' 
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    {isCurrentlyLoading ? (
-                      <Icon name="ArrowPathIcon" size={20} className={`animate-spin ${isActive ? 'text-white' : 'text-[#21c45d]'}`} />
-                    ) : (
-                      <Icon name={item.icon} size={20} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-white' : 'text-gray-400'} />
-                    )}
-                    <span className="flex-1">{item.name}</span>
-                  </Link>
-                );
-              })}
+              {adminMenuItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200 ${
+                    pathname.startsWith(item.href) ? 'bg-[#21c45d] text-white shadow-sm shadow-[#21c45d]/20' : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon name={item.icon} size={20} variant={pathname.startsWith(item.href) ? 'solid' : 'outline'} />
+                  <span className="flex-1">{item.name}</span>
+                </Link>
+              ))}
             </nav>
           </div>
         </div>
 
-        {/* Admin Profile Card (Bottom) */}
+        {/* ✅ Updated Sidebar Bottom Card */}
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors group cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-white overflow-hidden border border-gray-200 shrink-0 shadow-sm">
-              <img src="https://i.pravatar.cc/150?img=11" alt={displayName} className="w-full h-full object-cover" />
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="w-10 h-10 rounded-full bg-[#ecfdf3] border border-[#21c45d]/10 overflow-hidden flex items-center justify-center shrink-0">
+              {userImage ? (
+                <img src={userImage} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <span className="font-bold text-[#21c45d] text-sm">{userInitial}</span>
+              )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-semibold text-gray-900 truncate">
-                {displayName}
-              </span>
-              <span className="text-xs text-gray-500 font-medium truncate">
-                Administrator
-              </span>
+              <span className="text-sm font-semibold text-gray-900 truncate">{displayName}</span>
+              <span className="text-xs text-gray-500 font-medium truncate capitalize">{displayRole}</span>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT WRAPPER */}
+      {/* MAIN CONTENT */}
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${dir === 'rtl' ? 'lg:mr-[260px]' : 'lg:ml-[260px]'}`}>
         
         {/* TOP NAVBAR */}
         <header className="sticky top-0 h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-6 z-30 shrink-0">
-          
-          {/* Left Side: Toggle & Search */}
           <div className="flex items-center gap-4 flex-1">
-            <button 
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-gray-500 hover:text-gray-900 bg-gray-50 rounded-xl transition-all outline-none"
-            >
-              <Icon name="Bars3Icon" size={22} />
-            </button>
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-gray-500 bg-gray-50 rounded-xl"><Icon name="Bars3Icon" size={22} /></button>
             
-            <div className="hidden sm:flex items-center bg-gray-50 border border-transparent rounded-xl px-4 py-2.5 w-[420px] focus-within:bg-white focus-within:border-gray-200 focus-within:shadow-sm transition-all group">
-              <Icon name="MagnifyingGlassIcon" size={18} className="text-gray-400 group-focus-within:text-gray-500 mr-2" />
-              <input 
-                type="text" 
-                placeholder={t.nav.search}
-                className="bg-transparent border-none outline-none text-sm w-full text-gray-900 placeholder:text-gray-400 font-medium"
-              />
-              <div className="flex items-center justify-center px-2 py-0.5 rounded-md border border-gray-200 bg-white text-[11px] font-medium text-gray-400 ml-2 shadow-sm">
-                ⌘K
-              </div>
+            <div className="hidden sm:flex items-center bg-gray-50 rounded-xl px-4 py-2.5 w-[420px] group focus-within:bg-white border border-transparent focus-within:border-gray-200">
+              <Icon name="MagnifyingGlassIcon" size={18} className="text-gray-400 mr-2" />
+              <input type="text" placeholder={t.nav.search} className="bg-transparent outline-none text-sm w-full text-gray-900 font-medium" />
             </div>
           </div>
 
-          {/* Right Side: Actions */}
           <div className="flex items-center gap-5">
+            <Link href={switchLangPath()} className="text-xs font-semibold text-gray-500 hover:text-gray-900 uppercase">{otherLang === 'ar' ? 'عربي' : 'EN'}</Link>
             
-            <Link
-              href={switchLangPath()}
-              onClick={() => { if (pathname !== switchLangPath()) setIsSwitchingLang(true); }}
-              className="hidden sm:flex items-center justify-center text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors uppercase tracking-wider"
-            >
-              {otherLang === 'ar' ? 'عربي' : 'EN'}
-            </Link>
-
-            {/* Notification Bell */}
-            <button className="relative cursor-pointer p-2 text-gray-500 hover:text-gray-900 transition-colors outline-none group">
+            <button className="relative p-2 text-gray-500">
               <Icon name="BellIcon" size={24} variant="outline" />
-              <span className="absolute top-1.5 right-2 flex items-center justify-center h-4 w-4 rounded-full bg-[#21c45d] border-2 border-white text-[9px] font-bold text-white shadow-sm">
-                3
-              </span>
+              <span className="absolute top-1.5 right-2 h-4 w-4 rounded-full bg-[#21c45d] border-2 border-white text-[9px] font-bold text-white flex items-center justify-center">3</span>
             </button>
 
             <div className="w-px h-8 bg-gray-200 hidden sm:block mx-1" />
 
-            {/* Admin Profile Navbar Dropdown */}
+            {/* ✅ Updated Top Navbar Dropdown */}
             <div className="relative" ref={profileDropdownRef}>
-              <button 
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className={`flex items-center cursor-pointer gap-3 outline-none transition-all group pl-2 ${profileDropdownOpen ? 'opacity-80' : ''}`}
-              >
-                <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0 relative shadow-sm">
-                  {/* Mock user avatar from UI reference */}
-                  <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="w-full h-full object-cover" />
+              <button onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} className="flex cursor-pointer items-center gap-3 group">
+                <div className="w-9 h-9 rounded-full bg-[#ecfdf3] border border-[#21c45d]/10 overflow-hidden flex items-center justify-center shrink-0">
+                  {userImage ? (
+                    <img src={userImage} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <span className="font-bold text-[#21c45d] text-sm">{userInitial}</span>
+                  )}
                 </div>
-                <div className="hidden md:flex flex-col items-start pr-1">
-                  <span className="text-sm font-semibold text-gray-900 leading-tight">
-                    {displayName}
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    {t.nav.role}
-                  </span>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-semibold text-gray-900 leading-tight">{displayName}</span>
+                  <span className="text-[11px] text-gray-500 font-medium capitalize">{displayRole}</span>
                 </div>
-                <Icon 
-                  name="ChevronDownIcon" 
-                  size={14} 
-                  className={`hidden md:block text-gray-400 ml-1 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} 
-                />
+                <Icon name="ChevronDownIcon" size={14} className={`text-gray-400 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className={`absolute top-[calc(100%+0.75rem)] w-56 bg-white border border-gray-100 rounded-2xl py-2 z-50 shadow-xl shadow-gray-900/5 animate-in fade-in zoom-in-95 duration-200 origin-top-right ${dir === 'rtl' ? 'left-0 origin-top-left' : 'right-0'}`}>
-                  <div className="px-4 py-3 border-b border-gray-50 mb-1 md:hidden">
-                    <p className="text-sm font-bold text-gray-900">{displayName}</p>
-                    <p className="text-xs text-gray-500 truncate">{userEmail || t.nav.role}</p>
-                  </div>
-                  
-                  <Link 
-                    href={`/${lang}/settings/profile`}
-                    onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-[#21c45d] transition-colors"
-                  >
+                <div className={`absolute top-[calc(100%+0.75rem)] w-56 bg-white border border-gray-100 rounded-2xl py-2 z-50 shadow-xl ${dir === 'rtl' ? 'left-0' : 'right-0'}`}>
+                  <Link href={`/${lang}/profile`} className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-[#21c45d]">
                     <Icon name="UserCircleIcon" size={18} className="text-gray-400" />
                     {t.nav.myProfile}
                   </Link>
-
                   <div className="px-2 mt-1 border-t border-gray-50 pt-1">
-                    <LogoutBtn 
-                      lang={lang}
-                      onLogout={() => setProfileDropdownOpen(false)}
-                    />
+                    <LogoutBtn lang={lang} onLogout={() => setProfileDropdownOpen(false)} />
                   </div>
                 </div>
               )}
             </div>
-
           </div>
         </header>
 
-        {/* PAGE CONTENT */}
-        <main className="flex-1 p-6 lg:p-8 relative overflow-x-hidden">
-          {(loadingPath || isSwitchingLang) && (
-            <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-sm animate-in fade-in duration-300 pointer-events-none" />
-          )}
-
+        <main className="flex-1 p-6 lg:p-8 relative">
           <div key={pathname} className="h-full animate-in fade-in duration-500 ease-out">
             {children}
           </div>
         </main>
-
       </div>
     </div>
   );

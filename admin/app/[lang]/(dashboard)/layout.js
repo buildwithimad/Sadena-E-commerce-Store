@@ -68,7 +68,6 @@ export default async function RootLayout({ children, params }) {
   }
 
   const { data } = await supabase.auth.getSession()
-console.log("user data from layout", data.session.user)
 
   const dir = lang === 'ar' ? 'rtl' : 'ltr'
 
