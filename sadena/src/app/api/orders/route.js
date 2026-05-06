@@ -3,6 +3,7 @@ import { createAnonClient } from '@/lib/supabaseAnon';
 import crypto from 'crypto';
 import { validateOrder } from '@/lib/validations/orderValidations';
 import { sendOrderEmail } from '@/lib/email/sendOrderEmail';
+import { generateHash } from '@/lib/payment/hash';
 
 export async function POST(req) {
   try {
@@ -136,26 +137,62 @@ export async function POST(req) {
       });
     }
 
-    // ✅ CARD (AVAPAY FORM)
-    if (payment_method === "card") {
-      return Response.json({
-        order: data,
+    // ✅ CARD PAYMENT
+if (payment_method === "card") {
+  try {
+    const hash = generateHash({
+      order_id: data.id,
+      amount: data.total,
+      email: customer_email,
+      password: process.env.AVAPAY_PASSWORD,
+    });
 
-        payment: {
-          merchant_id: process.env.AVAPAY_MERCHANT_ID,
-
-          // ⚠️ REQUIRED by Avapay (not ideal, but needed)
-          merchant_password: process.env.AVAPAY_MERCHANT_PASSWORD,
-
+    const resPay = await fetch(
+      "https://revamp-api.edfapay.com/api/v1/payment-gateway/initiate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_key: process.env.AVAPAY_CLIENT_KEY,
           order_id: data.id,
           amount: data.total,
           currency: "SAR",
 
-          callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhook/avapay`,
-        },
-      });
-    }
+          customer_email,
 
+          hash,
+
+          callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhook/avapay`,
+        }),
+      }
+    );
+
+    const payData = await resPay.json();
+
+   if (!resPay.ok) {
+  console.error("EDFA ERROR RESPONSE:", payData);
+  return Response.json(
+    { error: "Payment gateway error", details: payData },
+    { status: 500 }
+  );
+}
+
+    return Response.json({
+      order: data,
+      payment_url: payData?.data?.redirectUrl,
+    });
+
+  } catch (err) {
+    console.error("PAYMENT ERROR:", err);
+
+    return Response.json(
+      { error: "Payment gateway error" },
+      { status: 500 }
+    );
+  }
+}
   } catch (err) {
     console.error("ORDER API ERROR:", err);
 

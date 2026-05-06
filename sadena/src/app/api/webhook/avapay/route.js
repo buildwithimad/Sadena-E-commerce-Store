@@ -2,29 +2,23 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req) {
   try {
-    const formData = await req.formData();
+    const body = await req.json();
 
-    const order_id = formData.get("order_id");
-    const status = formData.get("status");
-    const payment_id = formData.get("payment_id");
-    const merchant_id = formData.get("merchant_id");
-    const amount = Number(formData.get("amount"));
+    console.log("EDFA WEBHOOK:", body);
+
+    // =========================
+    // 🔥 EXTRACT DATA (adjust if needed)
+    // =========================
+    const order_id = body.order_id || body.orderId;
+    const status = body.status;
+    const payment_id = body.transaction_id || body.payment_id;
+    const amount = Number(body.amount);
 
     // =========================
     // 🔐 BASIC VALIDATION
     // =========================
-
-    if (!order_id || !status || !merchant_id) {
+    if (!order_id || !status) {
       return new Response("Missing fields", { status: 400 });
-    }
-
-    if (!["success", "failed"].includes(status)) {
-      return new Response("Invalid status", { status: 400 });
-    }
-
-    // ✅ Verify merchant
-    if (merchant_id !== process.env.AVAPAY_MERCHANT_ID) {
-      return new Response("Unauthorized", { status: 401 });
     }
 
     const supabase = createClient(
@@ -33,7 +27,7 @@ export async function POST(req) {
     );
 
     // =========================
-    // 🔍 CHECK ORDER
+    // 🔍 FETCH ORDER
     // =========================
     const { data: order } = await supabase
       .from("orders")
@@ -45,12 +39,16 @@ export async function POST(req) {
       return new Response("Order not found", { status: 404 });
     }
 
-    // ✅ Verify amount
-    if (Number(order.total) !== amount) {
+    // =========================
+    // 🔐 AMOUNT CHECK
+    // =========================
+    if (amount && Number(order.total) !== amount) {
       return new Response("Amount mismatch", { status: 400 });
     }
 
-    // ✅ Prevent duplicate updates
+    // =========================
+    // 🔁 DUPLICATE PROTECTION
+    // =========================
     if (order.payment_status === "paid") {
       return new Response("Already processed");
     }
@@ -58,7 +56,8 @@ export async function POST(req) {
     // =========================
     // 💾 UPDATE ORDER
     // =========================
-    if (status === "success") {
+
+    if (status === "SUCCESS" || status === "success") {
       await supabase
         .from("orders")
         .update({

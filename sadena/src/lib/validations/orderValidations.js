@@ -33,7 +33,6 @@ export function validateOrder(body) {
     shipping_street,
     shipping_city,
     shipping_state,
-    shipping_zip, // ✅ Added ZIP code
     shipping_country,
 
     payment_method,
@@ -116,12 +115,7 @@ export function validateOrder(body) {
     errors.shipping_city = "City name must be at least 2 characters";
   }
 
-  // ✅ ZIP CODE REQUIRED VALIDATION
-  if (isEmpty(shipping_zip)) {
-    errors.shipping_zip = "ZIP Code is required";
-  } else if (shipping_zip.trim().length < 3 || shipping_zip.trim().length > 20) {
-    errors.shipping_zip = "Invalid ZIP Code";
-  }
+  
 
   if (isEmpty(shipping_country)) {
     errors.shipping_country = "Country is required";
