@@ -96,7 +96,7 @@ export default function CartDrawer({ lang = 'en' }) {
               {t?.title || (lang === 'ar' ? 'السلة' : 'Cart')}
             </h2>
             {items?.length > 0 && (
-              <span className="w-5 h-5 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] text-[10px] font-medium rounded-full">
+              <span className="w-5 h-5 flex items-center justify-center bg-[#21c45d] text-[var(--background)] text-[10px] font-medium rounded-full">
                 {items?.reduce((s, i) => s + i?.quantity, 0)}
               </span>
             )}
@@ -267,7 +267,7 @@ export default function CartDrawer({ lang = 'en' }) {
             <Link
               href={`/${lang}/checkout`}
               onClick={closeCart}
-              className="flex items-center justify-center w-full bg-[var(--foreground)] text-[var(--background)] py-4 text-[11px] font-medium tracking-widest uppercase transition-all duration-300 hover:bg-[#1a4a31] active:scale-95 rounded-none mb-4"
+              className="flex items-center justify-center w-full bg-[#21c45d] text-[var(--background)] py-4 text-[11px] font-medium tracking-widest uppercase transition-all duration-300 hover:bg-[#1a4a31] active:scale-95 rounded-none mb-4"
             >
               {t?.checkout || (lang === 'ar' ? 'إتمام الطلب' : 'Checkout')}
             </Link>

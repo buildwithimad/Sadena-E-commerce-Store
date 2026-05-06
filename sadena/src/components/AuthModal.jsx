@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation'; // ✅ IMPORT THIS
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabaseClient';
 import AppLogo from '@/components/ui/AppLogo';
 
 export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const pathname = usePathname(); // ✅ Get the exact current path (e.g., /en/checkout)
   
   // Form states
   const [email, setEmail] = useState('');
@@ -68,7 +70,8 @@ export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/${lang}/auth/callback`,
+        // ✅ Add ?next= parameter so the backend knows where to return them
+        emailRedirectTo: `${window.location.origin}/${lang}/auth/callback?next=${encodeURIComponent(pathname)}`,
       },
     });
 
@@ -217,7 +220,8 @@ export default function AuthModal({ isOpen, onClose, lang = 'en' }) {
                   await supabase.auth.signInWithOAuth({
                     provider: "google",
                     options: {
-                      redirectTo: `${window.location.origin}/${lang}/auth/callback`,
+                      // ✅ Add ?next= parameter for Google OAuth too!
+                      redirectTo: `${window.location.origin}/${lang}/auth/callback?next=${encodeURIComponent(pathname)}`,
                     },
                   });
                 }}
