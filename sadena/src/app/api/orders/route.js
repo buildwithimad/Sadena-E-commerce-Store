@@ -113,85 +113,108 @@ export async function POST(req) {
       });
     }
 
-    // =========================
-    // 💳 CARD (EDFA PAY)
-    // =========================
-    if (payment_method === "card") {
-      try {
+ 
+// 💳 CARD (EDFA PAY)
+// =========================
+if (payment_method === "card") {
+  try {
+    console.log("🚀 Starting EDFAPay payment for:", data.order_number);
 
-        const hash = generateHash({
-          order_id: data.order_number,
-          amount: data.total,
-          currency: "SAR",
-          description: "Order Payment",
-          password: process.env.AVAPAY_PASSWORD,
-        });
+    const hash = generateHash({
+      order_id: data.order_number,
+      amount: data.total,
+      currency: "SAR",
+      description: "Order Payment",
+      password: process.env.AVAPAY_PASSWORD,
+    });
 
-        const formData = new URLSearchParams();
+    console.log("🔐 Generated Hash:", hash);
 
-        formData.append("action", "SALE");
-        formData.append("edfa_merchant_id", process.env.AVAPAY_MERCHANT_ID);
+    const formData = new URLSearchParams();
 
-        formData.append("order_id", data.order_number);
-        formData.append("order_amount", data.total);
-        formData.append("order_currency", "SAR");
-        formData.append("order_description", "Order Payment");
+    formData.append("action", "SALE");
+    formData.append("edfa_merchant_id", process.env.AVAPAY_MERCHANT_ID);
 
-        formData.append("req_token", "N");
+    formData.append("order_id", data.order_number);
+    formData.append("order_amount", data.total);
+    formData.append("order_currency", "SAR");
+    formData.append("order_description", "Order Payment");
 
-        formData.append("payer_first_name", customer_first_name);
-        formData.append("payer_last_name", customer_last_name);
-        formData.append("payer_address", shipping_street);
-        formData.append("payer_country", "SA");
-        formData.append("payer_city", shipping_city);
-        formData.append("payer_zip", "12221");
+    formData.append("req_token", "N");
 
-        formData.append("payer_email", customer_email);
-        formData.append("payer_phone", customer_phone || "966500000000");
+    formData.append("payer_first_name", customer_first_name);
+    formData.append("payer_last_name", customer_last_name);
+    formData.append("payer_address", shipping_street);
+    formData.append("payer_country", "SA");
+    formData.append("payer_city", shipping_city);
+    formData.append("payer_zip", "12221");
 
-        formData.append("payer_ip", "127.0.0.1");
+    formData.append("payer_email", customer_email);
+    formData.append("payer_phone", customer_phone || "966500000000");
 
-        formData.append(
-          "term_url_3ds",
-          `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhook/avapay`
-        );
+    formData.append("payer_ip", "127.0.0.1");
 
-        formData.append("auth", "N");
-        formData.append("recurring_init", "N");
+    const webhookUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhook/avapay?order_id=${data.order_number}`;
+    const returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/${lang}/order-success?order_id=${data.order_number}`;
 
-        formData.append("hash", hash);
+    console.log("📡 Webhook URL:", webhookUrl);
+    console.log("🔁 Return URL:", returnUrl);
 
-        const resPay = await fetch(
-          "https://apidev.edfapay.com/payment/initiate",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+    formData.append("term_url_3ds", webhookUrl);
+    formData.append("return_url", returnUrl);
 
-        const payData = await resPay.json();
+    formData.append("auth", "N");
+    formData.append("recurring_init", "N");
 
-        if (!resPay.ok) {
-          return Response.json(
-            { error: "Payment failed", details: payData },
-            { status: 500 }
-          );
-        }
+    formData.append("hash", hash);
 
-        return Response.json({
-          order: data,
-          payment_url: payData.redirect_url,
-        });
+    console.log("📦 Sending to EDFAPay...");
 
-      } catch (err) {
-  console.error("EDFA PAY ERROR:", err);
+    const resPay = await fetch(
+      "https://apidev.edfapay.com/payment/initiate",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
-  return Response.json(
-    { error: "Payment gateway error", details: err.message },
-    { status: 500 }
-  );
-}
+    const text = await resPay.text();
+    console.log("📩 Raw EDFAPay Response:", text);
+
+    let payData;
+    try {
+      payData = JSON.parse(text);
+    } catch {
+      console.error("❌ Not JSON response");
+      throw new Error(text);
     }
+
+    console.log("✅ Parsed Response:", payData);
+
+    if (!resPay.ok) {
+      console.error("❌ Payment failed:", payData);
+      return Response.json(
+        { error: "Payment failed", details: payData },
+        { status: 500 }
+      );
+    }
+
+    console.log("🌍 Redirect URL:", payData.redirect_url);
+
+    return Response.json({
+      order: data,
+      payment_url: payData.redirect_url,
+    });
+
+  } catch (err) {
+    console.error("💥 EDFA PAY ERROR:", err);
+
+    return Response.json(
+      { error: "Payment gateway error", details: err.message },
+      { status: 500 }
+    );
+  }
+}
 
   } catch (err) {
     return Response.json(

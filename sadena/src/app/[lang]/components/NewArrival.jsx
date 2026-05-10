@@ -6,7 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import Container from '@/components/ui/Container';
 
-export default function BestSellersSection({ lang, t, products = [], banners = [] }) {
+export default function NewArrivalsSection({ lang, t, products = [], banners = [] }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const items = products?.slice(0, 8);
   
@@ -43,13 +43,13 @@ export default function BestSellersSection({ lang, t, products = [], banners = [
               <div className="absolute inset-2 bg-[#6b9e7a] opacity-90 rounded-[40%_60%_50%_50%/40%_50%_40%_60%] blur-[1px]" />
               
               <h2 className="relative z-10 font-display text-xl sm:text-2xl font-bold text-black tracking-tight">
-                {t?.bestSellers?.heading || (lang === 'ar' ? 'الأكثر طلباً من عملائنا' : 'Loved by Our Customers')}
+                {t?.newArrivals?.heading || (lang === 'ar' ? 'جديد سادينا' : 'New from Sadina')}
               </h2>
             </div>
 
             {/* "View All" Link */}
             <Link
-              href={`/${lang}/products?sort=popular`}
+              href={`/${lang}/products?sort=newest`}
               className="group inline-flex items-center gap-2 text-sm font-semibold tracking-widest uppercase text-[var(--foreground)] hover:text-[#5c8b5d] transition-colors duration-300 self-start sm:self-auto"
             >
               <span className="relative pb-1">
@@ -70,7 +70,7 @@ export default function BestSellersSection({ lang, t, products = [], banners = [
         </RevealOnScroll>
       </Container>
 
-      {/* DYNAMIC BANNERS SLIDER (100% Full Width) */}
+      {/* DYNAMIC BANNERS SLIDER (Only renders if admin uploaded banners for this section) */}
       {banners?.length > 0 && (
         <RevealOnScroll className="w-full mb-12 sm:mb-16">
           <div className="relative w-full h-[400px] sm:h-[500px] lg:h-[600px] overflow-hidden group bg-gray-900">
@@ -83,7 +83,7 @@ export default function BestSellersSection({ lang, t, products = [], banners = [
                 <div className="absolute inset-0 bg-black/40 z-10" />
                 
                 <img 
-                  src={banner.image} 
+                  src={banner.image} // Make sure this matches your DB column name (image or image_url)
                   alt={banner.title || 'Sadena Banner'} 
                   className={`w-full h-full object-cover transition-transform duration-[10000ms] ${index === currentSlide ? 'scale-110' : 'scale-100'}`}
                 />
@@ -107,7 +107,7 @@ export default function BestSellersSection({ lang, t, products = [], banners = [
 
                   {/* Dynamic CTA Button */}
                   <Link
-                    href={banner.link || `/${lang}/products?sort=popular`}
+                    href={banner.link || `/${lang}/products?sort=newest`}
                     className="inline-flex items-center gap-3 px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-sm text-sm font-bold tracking-widest uppercase transition-all duration-300 hover:scale-105"
                   >
                     {t?.featured?.viewAll || (lang === 'ar' ? 'عرض الكل' : 'View All')}

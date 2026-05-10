@@ -1,104 +1,144 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import Icon from "@/components/ui/AppIcon";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCart } from "@/store/useCartStore";
 
-export default function OrderSuccessClient({ orderNumber, token }) {
-  const router = useRouter();
-  const { lang = 'en' } = useParams();
-  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+export default function OrderSuccessClient() {
+  const { clearCart } = useCart();
+  const searchParams = useSearchParams();
+  const orderNumber = searchParams.get("order_id");
 
-  const [copied, setCopied] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [status, setStatus] = useState("checking");
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!orderNumber) return;
 
-  const orderLink = `/${lang}/order/${orderNumber}${token ? `?token=${token}` : ''}`;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/orders/status?order_id=${orderNumber}`);
+        
+        if (!res.ok) throw new Error("Failed to fetch order status");
+        
+        const data = await res.json();
+        console.log("Status:", data);
+        
+        if (data?.payment_status) {
+  setStatus(data.payment_status);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(window.location.origin + orderLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+ if (data.payment_status === "paid") {
+  clearCart();
+}
+} else {
+          setStatus("failed");
+        }
+      } catch (error) {
+        console.error("Status check error:", error);
+        setStatus("error");
+      }
+    };
 
-  const handleViewOrder = () => {
-    router.push(orderLink);
-  };
-
-  if (!mounted) return null; // Prevent hydration mismatch
+    checkStatus();
+  }, [orderNumber]);
 
   return (
-    <div dir={dir} className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4 pt-20">
-      
-      <div className="bg-white border border-[var(--border)] rounded-md p-6 sm:p-10 w-full max-w-md  text-center animate-in zoom-in-95 fade-in duration-500">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12  mt-20">
+      <div className="max-w-md w-full bg-white   p-8 md:p-10 border border-gray-100 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* SUCCESS ICON (Scaled down for elegance) */}
-        <div className="w-16 h-16 mx-auto bg-green-50/80 rounded-full flex items-center justify-center mb-5 shadow-sm border border-green-100">
-          <Icon name="CheckBadgeIcon" size={32} className="text-green-500" variant="solid" />
-        </div>
+        {/* State: Missing or Invalid Order */}
+        {!orderNumber && (
+          <div className="flex flex-col items-center space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-gray-50 rounded-[20px] border border-gray-100 flex items-center justify-center mb-2">
+              <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Order Not Found</h2>
+            <p className="text-gray-500 text-sm leading-relaxed max-w-[280px]">
+              We couldn't find the order details. The link might be invalid or expired.
+            </p>
+            <div className="w-full pt-4">
+              <button 
+                onClick={() => window.location.href = '/'} 
+                className="w-full px-4 py-3.5 bg-gray-900 text-white text-[13px] font-bold uppercase tracking-wider rounded-xl hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
+              >
+                Return to Shop
+              </button>
+            </div>
+          </div>
+        )}
 
-        {/* TITLE */}
-        <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--foreground)] tracking-tight mb-2">
-          {lang === 'ar' ? 'تم تأكيد طلبك بنجاح!' : 'Order Placed Successfully!'}
-        </h1>
+        {/* State: Checking / Loading */}
+        {orderNumber && status === "checking" && (
+          <div className="flex flex-col items-center space-y-5 animate-in fade-in duration-300">
+            <div className="relative w-20 h-20 flex items-center justify-center mb-2">
+              <div className="absolute inset-0 border-4 border-gray-50 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-[#21c45d] rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">Confirming Payment</h2>
+              <p className="text-gray-500 text-sm leading-relaxed max-w-[280px] mx-auto">
+                Please wait a moment while we securely process and verify your order.
+              </p>
+            </div>
+          </div>
+        )}
 
-        <p className="text-sm text-[var(--muted-foreground)] mb-6 leading-relaxed px-2">
-          {lang === 'ar' 
-            ? 'شكراً لتسوقك معنا. تم استلام طلبك بنجاح وسنقوم بمعالجته قريباً.' 
-            : 'Thank you for your purchase. Your order has been received and is being processed.'}
-        </p>
+        {/* State: Payment Successful */}
+        {orderNumber && status === "paid" && (
+          <div className="flex flex-col items-center space-y-4 animate-in fade-in zoom-in duration-500">
+            <div className="w-20 h-20  rounded-[20px] flex items-center justify-center mb-2 shadow-sm shadow-[#21c45d]/10 border border-[#21c45d]/10">
+              <svg className="w-10 h-10 text-[#21c45d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Payment Successful!</h2>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Thank you for your purchase. Your order <br />
+              <span className="font-mono font-bold text-gray-900 bg-gray-50 border border-gray-100 px-3 py-1 rounded-lg mt-2 inline-block tracking-wide">
+                {orderNumber}
+              </span> <br />
+              has been confirmed.
+            </p>
+            <div className="w-full pt-6">
+              <a 
+                href="/" 
+                className="flex items-center justify-center w-full px-4 py-3.5 bg-[#21c45d] text-white text-[13px] font-bold uppercase tracking-wider  hover:bg-[#1eb053] transition-all active:scale-95 shadow-[#21c45d]/20 outline-none"
+              >
+                Continue Shopping
+              </a>
+            </div>
+          </div>
+        )}
 
-        {/* ORDER NUMBER (Subtle Box) */}
-        <div className="bg-gray-50 border border-gray-100 p-4 rounded-xl mb-6">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-1">
-            {lang === 'ar' ? 'رقم الطلب' : 'Order Number'}
-          </p>
-          <p className="text-lg font-display font-bold text-[var(--foreground)] tracking-wider">
-            #{orderNumber}
-          </p>
-        </div>
-
-        {/* ACTION BUTTONS (Slimmer & tighter) */}
-        <div className="flex flex-col gap-2.5">
-          <button
-            onClick={handleViewOrder}
-            className="w-full flex items-center justify-center gap-2 bg-[var(--primary)] text-white py-3.5 rounded-lg text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:bg-[#1a4a31] active:scale-95 shadow-sm"
-          >
-            <Icon name="EyeIcon" size={16} variant="outline" />
-            {lang === 'ar' ? 'عرض تفاصيل الطلب' : 'View Order Details'}
-          </button>
-
-          <button
-            onClick={handleCopy}
-            className={`w-full flex items-center justify-center gap-2 border py-3.5 rounded-lg text-xs font-bold tracking-widest uppercase transition-all duration-300 active:scale-95 ${
-              copied 
-                ? 'bg-green-50 border-green-200 text-green-700' 
-                : 'bg-white border-[var(--border)] text-[var(--foreground)] hover:bg-gray-50'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Icon name="CheckIcon" size={16} />
-                {lang === 'ar' ? 'تم النسخ!' : 'Link Copied!'}
-              </>
-            ) : (
-              <>
-                <Icon name="LinkIcon" size={16} variant="outline" />
-                {lang === 'ar' ? 'نسخ رابط الطلب' : 'Copy Tracking Link'}
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* INFO FOOTER */}
-        <p className="text-[10px] text-[var(--muted-foreground)] mt-5 font-medium">
-          {lang === 'ar' 
-            ? 'احتفظ بهذا الرابط لتتبع حالة طلبك في أي وقت.' 
-            : 'Save this link to track your order status anytime.'}
-        </p>
+        {/* State: Payment Failed or Error */}
+        {orderNumber && (status === "failed" || status === "error") && (
+          <div className="flex flex-col items-center space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-red-50 rounded-[20px] flex items-center justify-center mb-2 border border-red-100">
+              <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Payment Failed</h2>
+            <p className="text-gray-500 text-sm leading-relaxed max-w-[280px]">
+              We encountered an issue processing your payment for order <span className="font-mono font-bold text-gray-900">{orderNumber}</span>.
+            </p>
+            <div className="w-full pt-6 space-y-3">
+              <button 
+                onClick={() => window.location.href = '/checkout'} 
+                className="w-full px-4 py-3.5 bg-red-500 text-white text-[13px] font-bold uppercase tracking-wider rounded-xl hover:bg-red-600 transition-all active:scale-95 shadow-sm shadow-red-500/20 outline-none"
+              >
+                Try Payment Again
+              </button>
+              <button 
+                onClick={() => window.location.href = '/contact'} 
+                className="w-full px-4 py-3.5 bg-white text-gray-600 text-[13px] font-bold uppercase tracking-wider rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 outline-none"
+              >
+                Contact Support
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

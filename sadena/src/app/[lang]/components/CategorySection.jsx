@@ -10,7 +10,6 @@ export default function CategorySection({ lang, t, categories = [] }) {
   // Ensure we show up to 6 categories for the 6-column grid layout
   const displayCategories = categories?.slice(0, 6);
 
-  console.log("categories from Category Component", displayCategories)
 
   return (
     <section

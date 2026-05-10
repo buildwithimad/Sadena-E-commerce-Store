@@ -49,6 +49,8 @@ export default function AdminShell({ children, lang = 'en', user }) {
         orders: 'Orders',
         products: 'Products',
         warehouse: 'Warehouse',
+        banners: "Banners",
+        blogs: "Articles",
         settings: 'Settings',
         adminProfile: 'Admins',
         activityLogs: 'Activity Logs'
@@ -70,6 +72,8 @@ export default function AdminShell({ children, lang = 'en', user }) {
         orders: 'الطلبات',
         products: 'المنتجات',
         warehouse: 'المخزن',
+        banners: "لافتات",
+        blogs: "مقالات",
         settings: 'الإعدادات',
         adminProfile: 'المسؤولين',
         activityLogs: 'سجلات النشاط'
@@ -118,6 +122,7 @@ export default function AdminShell({ children, lang = 'en', user }) {
     return segments.join('/');
   };
 
+  // ✅ Updated icons to accurately represent the sections
   const menuItems = [
     { name: t.sidebar.dashboard, icon: 'HomeIcon', href: `/${lang}/overview` },
     { name: t.sidebar.analytics, icon: 'ChartBarIcon', href: `/${lang}/analytics` },
@@ -125,10 +130,12 @@ export default function AdminShell({ children, lang = 'en', user }) {
     { name: t.sidebar.products, icon: 'CubeIcon', href: `/${lang}/products` },
     { name: t.sidebar.categories, icon: 'Squares2X2Icon', href: `/${lang}/categories` },
     { name: t.sidebar.warehouse, icon: 'BuildingStorefrontIcon', href: `/${lang}/warehouse` },
+    { name: t.sidebar.banners, icon: 'PhotoIcon', href: `/${lang}/banners` },
+    { name: t.sidebar.blogs, icon: 'DocumentTextIcon', href: `/${lang}/blogs` },
   ];
 
   const adminMenuItems = [
-    { name: t.sidebar.adminProfile, icon: 'UserCircleIcon', href: `/${lang}/admins` },
+    { name: t.sidebar.adminProfile, icon: 'UsersIcon', href: `/${lang}/admins` },
     { name: t.sidebar.settings, icon: 'Cog8ToothIcon', href: `/${lang}/settings` },
   ];
 
@@ -192,7 +199,7 @@ export default function AdminShell({ children, lang = 'en', user }) {
           </div>
         </div>
 
-        {/* ✅ Updated Sidebar Bottom Card */}
+        {/* Sidebar Bottom Card */}
         <div className="p-4 border-t border-gray-100 shrink-0">
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
             <div className="w-10 h-10 rounded-full bg-[#ecfdf3] border border-[#21c45d]/10 overflow-hidden flex items-center justify-center shrink-0">
@@ -234,7 +241,7 @@ export default function AdminShell({ children, lang = 'en', user }) {
 
             <div className="w-px h-8 bg-gray-200 hidden sm:block mx-1" />
 
-            {/* ✅ Updated Top Navbar Dropdown */}
+            {/* Top Navbar Dropdown */}
             <div className="relative" ref={profileDropdownRef}>
               <button onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} className="flex cursor-pointer items-center gap-3 group">
                 <div className="w-9 h-9 rounded-full bg-[#ecfdf3] border border-[#21c45d]/10 overflow-hidden flex items-center justify-center shrink-0">

@@ -19,12 +19,12 @@ export async function middleware(req) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = req.nextUrl.pathname
-  
-  // 🛑 1. STOP middleware if it's a static file or internal Next.js path
+
+  // 🛑 Skip static + api
   if (
-    pathname.startsWith('/_next') || 
-    pathname.startsWith('/api') || 
-    pathname.includes('.') // This catches logo.png, favicon.ico, etc.
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
   ) {
     return res
   }
@@ -32,49 +32,28 @@ export async function middleware(req) {
   const segments = pathname.split('/')
   const lang = segments[1] || 'en'
 
-  const isLoginPage = pathname === `/${lang}`
+  const loginPage = `/${lang}`
 
-  const protectedRoutes = [
-    `/${lang}/overview`,
-    `/${lang}/products`,
-    `/${lang}/categories`,
-    `/${lang}/orders`,
-    `/${lang}/warehouses`,
-    `/${lang}/settings`,
-    `/${lang}/analytics`,
-    `/${lang}/customers`,
-    `/${lang}/wishlists`,
-    `/${lang}/testimonials`,
-    `/${lang}/admins`, // Added admins since you have that page now
-    `/${lang}/profile`, // Added profile
-  ]
-
-  const isProtected = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  )
-
-  if (isProtected && !user) {
-    return NextResponse.redirect(new URL(`/${lang}`, req.url))
+  // ❌ Not logged in → go to login
+  if (!user) {
+    return NextResponse.redirect(new URL(loginPage, req.url))
   }
 
-  if (isLoginPage && user) {
+  // ❌ Not admin → block EVERYTHING
+  if (user.user_metadata?.role !== 'admin') {
+    return NextResponse.redirect(new URL(loginPage, req.url))
+  }
+
+  // ✅ Logged in admin → prevent going back to login
+  if (pathname === loginPage) {
     return NextResponse.redirect(new URL(`/${lang}/overview`, req.url))
   }
 
   return res
 }
 
-// 🛑 2. ADD THIS MATCHER CONFIG
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - logo.png (your specific logo)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|logo.png|.*\\.).*)',
   ],
 }

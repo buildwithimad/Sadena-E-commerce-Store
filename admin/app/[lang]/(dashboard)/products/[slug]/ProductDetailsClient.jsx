@@ -21,6 +21,16 @@ export default function ProductDetailsClient({
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
 
+  // Supabase-style Toast State
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    if (type !== "loading") {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+  const closeToast = () => setToast(null);
+
   const translations = {
     en: {
       back: 'Products', edit: 'Edit Product', delete: 'Delete', cancel: 'Cancel', save: 'Save Changes',
@@ -40,7 +50,13 @@ export default function ProductDetailsClient({
       status: { published: 'Published', draft: 'Draft' },
       validation: { reqName: 'Required', reqPrice: 'Required', invalidDiscount: 'Must be < price' },
       table: { warehouse: 'Warehouse', stock: 'Stock Quantity' },
-      meta: { created: 'Created At', updated: 'Updated At' }
+      meta: { created: 'Created At', updated: 'Updated At' },
+      // ✅ NEW TRANSLATIONS
+      is_weekly_offer: 'Weekly Offer',
+      offerExpires: 'Offer Expires At',
+      badge: 'Badge Text (EN)', badge_ar: 'Badge Text (AR)',
+      position: 'Display Order',
+      seo: 'SEO & Metadata', metaTitle: 'Meta Title', metaDesc: 'Meta Description',
     },
     ar: {
       back: 'المنتجات', edit: 'تعديل المنتج', delete: 'حذف', cancel: 'إلغاء', save: 'حفظ التغييرات',
@@ -60,7 +76,13 @@ export default function ProductDetailsClient({
       status: { published: 'منشور', draft: 'مسودة' },
       validation: { reqName: 'مطلوب', reqPrice: 'مطلوب', invalidDiscount: 'يجب أن يكون أقل من السعر' },
       table: { warehouse: 'المستودع', stock: 'كمية المخزون' },
-      meta: { created: 'تاريخ الإنشاء', updated: 'آخر تحديث' }
+      meta: { created: 'تاريخ الإنشاء', updated: 'آخر تحديث' },
+      // ✅ NEW TRANSLATIONS
+      is_weekly_offer: 'عرض الأسبوع',
+      offerExpires: 'ينتهي العرض في',
+      badge: 'نص الشارة (إنجليزي)', badge_ar: 'نص الشارة (عربي)',
+      position: 'ترتيب العرض',
+      seo: 'تحسين محركات البحث', metaTitle: 'عنوان الميتا', metaDesc: 'وصف الميتا',
     }
   };
 
@@ -71,8 +93,9 @@ export default function ProductDetailsClient({
     return 'text-gray-500';
   };
 
-  const inputClass = (err) => `w-full bg-white border ${err ? 'border-red-300 focus:border-red-400 focus:ring-1 focus:ring-red-400' : 'border-gray-200 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d]'} rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none transition-all duration-300`;
-  const labelClass = "block text-xs font-medium text-gray-600 mb-2";
+  // Upgraded Input class for Supabase-like clean UI
+  const inputClass = (err) => `w-full bg-white border ${err ? 'border-red-300 focus:border-red-400 focus:ring-1 focus:ring-red-400' : 'border-zinc-200 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d]'} rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none transition-all shadow-sm placeholder:text-zinc-400`;
+  const labelClass = "block text-[13px] font-medium text-zinc-700 mb-1.5";
 
   const currentTotalStock = isEditing 
     ? (formData.stockData?.length > 0 ? formData.stockData.reduce((sum, item) => sum + (Number(item.stock) || 0), 0) : Number(formData.stock) || 0)
@@ -91,6 +114,14 @@ export default function ProductDetailsClient({
       ingredients: product.ingredients?.join('\n') || '',
       ingredients_ar: product.ingredients_ar?.join('\n') || '',
       tags: product.tags?.join(', ') || '',
+      // ✅ ADDED NEW FIELDS TO STATE
+      is_weekly_offer: product.is_weekly_offer || false,
+      badge: product.badge || '',
+      badge_ar: product.badge_ar || '',
+      position: product.position || 0,
+      meta_title: product.meta_title || '',
+      meta_description: product.meta_description || '',
+      offer_expires_at: product.offer_expires_at ? new Date(product.offer_expires_at).toISOString().slice(0, 16) : '',
     });
     setErrors({});
     setIsEditing(true);
@@ -144,9 +175,14 @@ export default function ProductDetailsClient({
   };
 
   const handleSaveClick = async () => {
-    if (!validate()) return;
+    if (!validate()) {
+      showToast("Please fix the validation errors", "error");
+      return;
+    }
     try {
       setIsSaving(true);
+      showToast("Saving product changes...", "loading");
+
       const cleanArray = (val) => (!val ? [] : Array.isArray(val) ? val : val.split('\n').map(s => s.trim()).filter(Boolean));
       const cleanTags = (val) => (!val ? [] : Array.isArray(val) ? val : val.split(',').map(s => s.trim()).filter(Boolean));
 
@@ -165,7 +201,15 @@ export default function ProductDetailsClient({
         stockData: (formData.stockData || []).map((item) => ({
           warehouse_id: typeof item.warehouse_id === 'object' ? item.warehouse_id.id : item.warehouse_id,
           stock: Number(item.stock) || 0
-        }))
+        })),
+        // ✅ INJECT NEW FIELDS INTO PAYLOAD
+        is_weekly_offer: Boolean(formData.is_weekly_offer),
+        position: Number(formData.position) || 0,
+        badge: formData.badge || null,
+        badge_ar: formData.badge_ar || null,
+        meta_title: formData.meta_title || null,
+        meta_description: formData.meta_description || null,
+        offer_expires_at: formData.offer_expires_at ? new Date(formData.offer_expires_at).toISOString() : null,
       };
 
       const res = await fetch(`/api/products/${product.id}`, {
@@ -175,6 +219,7 @@ export default function ProductDetailsClient({
       if (!res.ok) throw new Error(result.error || 'Update failed');
 
       setIsEditing(false);
+      showToast("Product updated successfully!", "success");
       
       if (payload.images.length > 0 && !payload.images[0].startsWith('data:image')) {
         setActiveImage(payload.images[0]);
@@ -186,7 +231,7 @@ export default function ProductDetailsClient({
         router.refresh();
       }
     } catch (error) {
-      alert(`Error updating product: ${error.message}`);
+      showToast(error.message, "error");
     } finally {
       setIsSaving(false);
     }
@@ -194,7 +239,7 @@ export default function ProductDetailsClient({
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -204,55 +249,64 @@ export default function ProductDetailsClient({
   };
 
   return (
-    <div dir={dir} className="bg-[#f9fafb] min-h-screen text-gray-900 pb-24">
+    <div dir={dir} className="bg-[#f9fafb] min-h-screen text-zinc-900 pb-24">
       
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[200] animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-3 bg-zinc-900 text-white px-4 py-3 rounded-md shadow-lg border border-zinc-800 text-sm font-medium min-w-[250px]">
+          {toast.type === "loading" && <Icon name="ArrowPathIcon" size={18} className="animate-spin text-[#21c45d]" />}
+          {toast.type === "success" && <Icon name="CheckCircleIcon" size={18} className="text-[#21c45d]" />}
+          {toast.type === "error" && <Icon name="ExclamationCircleIcon" size={18} className="text-red-400" />}
+          <span className="flex-1">{toast.message}</span>
+          {toast.type !== "loading" && (
+            <button onClick={closeToast} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
+              <Icon name="XMarkIcon" size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* STICKY HEADER */}
-      <div className="bg-[#f9fafb] pt-6 pb-6 mb-2 sticky top-0 z-20 transition-all border-b border-gray-200/50">
+      <div className="bg-[#f9fafb] pt-6 pb-6 mb-2 sticky top-0 z-20 transition-all border-b border-zinc-200/50">
         <div className="max-w-[1400px] mx-auto px-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex flex-col">
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-              <Link href={`/${lang}/products`} className="hover:text-gray-900 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2 text-sm text-zinc-500 mb-2">
+              <Link href={`/${lang}/products`} className="hover:text-zinc-900 transition-colors cursor-pointer">
                 {t.back}
               </Link>
-              <span className="text-gray-400">›</span>
-              <span className="text-gray-500 cursor-default">Product Details</span>
+              <span className="text-zinc-400">›</span>
+              <span className="text-zinc-500 cursor-default">Product Details</span>
             </div>
             
-            <h1 className="text-[28px] font-bold text-gray-900 tracking-tight leading-tight mb-2">
+            <h1 className="text-[28px] font-medium text-zinc-900 tracking-tight leading-tight mb-2">
               {product.name}
             </h1>
             
             <div className="flex items-center gap-3 text-sm">
               <span className={`inline-flex items-center gap-1.5 font-medium ${getStatusBadge(product.is_published)}`}>
-                <span className={`w-2 h-2 rounded-full ${product.is_published ? 'bg-[#21c45d]' : 'bg-gray-400'}`}></span>
+                <span className={`w-2 h-2 rounded-full ${product.is_published ? 'bg-[#21c45d]' : 'bg-zinc-300'}`}></span>
                 {product.is_published ? t.status.published : t.status.draft}
               </span>
-              <span className="text-gray-300">|</span>
-              <span className="text-gray-500 font-medium">{t.sku}: {product.sku || '-'}</span>
+              <span className="text-zinc-300">|</span>
+              <span className="text-zinc-500 font-medium">{t.sku}: {product.sku || '-'}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 mt-2 sm:mt-0">
             {isEditing ? (
               <>
-                <button onClick={handleCancelClick} disabled={isSaving} className="h-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-gray-200 text-gray-700 px-6 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all duration-300 disabled:opacity-50">
+                <button onClick={handleCancelClick} disabled={isSaving} className="h-10 cursor-pointer inline-flex items-center justify-center bg-white border border-zinc-200 text-zinc-700 px-4 text-sm font-medium rounded-md hover:bg-zinc-50 transition-all duration-300 disabled:opacity-50">
                   {t.cancel}
                 </button>
-                <button onClick={handleSaveClick} disabled={isSaving} className="h-[42px] cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-6 text-sm font-medium rounded-xl hover:bg-[#1eb053] transition-all duration-300 disabled:opacity-50 active:scale-95">
+                <button onClick={handleSaveClick} disabled={isSaving} className="h-10 cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-4 text-sm font-medium rounded-md hover:bg-[#1eb053] transition-all duration-300 disabled:opacity-50">
                   {isSaving && <Icon name="ArrowPathIcon" size={16} className="animate-spin" />}
                   {t.save}
                 </button>
               </>
             ) : (
               <>
-                <button onClick={handleCancelClick} className="h-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-gray-200 text-gray-700 px-6 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all duration-300">
-                  {t.cancel}
-                </button>
-                <button onClick={handleEditClick} className="h-[42px] cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-6 text-sm font-medium rounded-xl hover:bg-[#1eb053] transition-all duration-300 active:scale-95">
+                <button onClick={handleEditClick} className="h-10 cursor-pointer inline-flex items-center justify-center gap-2 bg-[#21c45d] text-white px-4 text-sm font-medium rounded-md hover:bg-[#1eb053] transition-all duration-300">
                   {t.edit}
-                </button>
-                <button className="h-[42px] w-[42px] cursor-pointer inline-flex items-center justify-center bg-white border border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition-all duration-300">
-                   <Icon name="TrashIcon" size={18} />
                 </button>
               </>
             )}
@@ -266,13 +320,13 @@ export default function ProductDetailsClient({
         <div className="lg:col-span-8 space-y-6">
           
           {/* 1. PRODUCT OVERVIEW CARD */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-5 flex items-center gap-2">
               <Icon name="BookmarkIcon" size={18} className="text-[#21c45d]" variant="outline" />
               {t.overview}
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
                 <label className={labelClass}>{t.name}</label>
                 {isEditing ? (
@@ -281,7 +335,7 @@ export default function ProductDetailsClient({
                     {errors.name && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.name}</p>}
                   </div>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
                     {product.name}
                   </div>
                 )}
@@ -292,8 +346,8 @@ export default function ProductDetailsClient({
                 {isEditing ? (
                   <input type="text" value={formData.name_ar || ''} onChange={e => setFormData({...formData, name_ar: e.target.value})} className={inputClass()} dir="rtl" />
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-end cursor-default" dir="rtl">
-                    {product.name_ar || ''}
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center justify-end" dir="rtl">
+                    {product.name_ar || t.noData}
                   </div>
                 )}
               </div>
@@ -303,7 +357,7 @@ export default function ProductDetailsClient({
                 {isEditing ? (
                   <input type="text" value={formData.sku || ''} onChange={e => setFormData({...formData, sku: e.target.value})} className={inputClass()} dir="ltr" />
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center font-mono">
                     {product.sku || '-'}
                   </div>
                 )}
@@ -319,12 +373,47 @@ export default function ProductDetailsClient({
                         <option key={cat.id} value={cat.id}>{lang === 'ar' ? cat.name_ar || cat.label_ar : cat.name || cat.label}</option>
                       ))}
                     </select>
-                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-zinc-400 pointer-events-none" />
                   </div>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-between cursor-default">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center justify-between">
                     {product.category_name || t.noData}
-                    <Icon name="ChevronDownIcon" size={16} className="text-gray-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ ADDED: Badge (EN) */}
+              <div>
+                <label className={labelClass}>{t.badge}</label>
+                {isEditing ? (
+                  <input type="text" placeholder="e.g. New Arrival" value={formData.badge || ''} onChange={e => setFormData({...formData, badge: e.target.value})} className={inputClass()} dir="ltr" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
+                    {product.badge || t.noData}
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ ADDED: Badge (AR) */}
+              <div>
+                <label className={labelClass}>{t.badge_ar}</label>
+                {isEditing ? (
+                  <input type="text" placeholder="مثال: وصل حديثاً" value={formData.badge_ar || ''} onChange={e => setFormData({...formData, badge_ar: e.target.value})} className={inputClass()} dir="rtl" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center justify-end" dir="rtl">
+                    {product.badge_ar || t.noData}
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ ADDED: Position */}
+              <div>
+                <label className={labelClass}>{t.position}</label>
+                {isEditing ? (
+                  <input type="number" min="0" value={formData.position || ''} onChange={e => setFormData({...formData, position: e.target.value})} className={inputClass()} dir="ltr" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center font-mono">
+                    {product.position || '0'}
                   </div>
                 )}
               </div>
@@ -341,12 +430,11 @@ export default function ProductDetailsClient({
                       <option value="true">{t.status.published}</option>
                       <option value="false">{t.status.draft}</option>
                     </select>
-                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                    <Icon name="ChevronDownIcon" size={16} className="absolute right-3 top-3 text-zinc-400 pointer-events-none" />
                   </div>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center justify-between cursor-default">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center justify-between">
                     {product.is_published ? t.status.published : t.status.draft}
-                    <Icon name="ChevronDownIcon" size={16} className="text-gray-400" />
                   </div>
                 )}
               </div>
@@ -356,8 +444,8 @@ export default function ProductDetailsClient({
                 {isEditing ? (
                   <input type="text" value={formData.tags || ''} onChange={e => setFormData({...formData, tags: e.target.value})} placeholder="organic, fresh, mint" className={inputClass()} dir="ltr" />
                 ) : (
-                   <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
-                    {product.tags?.join(', ') || ''}
+                   <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
+                    {product.tags?.join(', ') || t.noData}
                   </div>
                 )}
               </div>
@@ -365,13 +453,13 @@ export default function ProductDetailsClient({
           </div>
 
           {/* 2. PRICING & INVENTORY CARD */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-5 flex items-center gap-2">
               <Icon name="TagIcon" size={18} className="text-[#21c45d]" variant="outline" />
               {t.pricing}
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
               <div>
                 <label className={labelClass}>{t.price}</label>
                 {isEditing ? (
@@ -380,7 +468,7 @@ export default function ProductDetailsClient({
                     {errors.price && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.price}</p>}
                   </>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
                     {product.price}
                   </div>
                 )}
@@ -394,15 +482,27 @@ export default function ProductDetailsClient({
                     {errors.discount_price && <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.discount_price}</p>}
                   </>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
-                     {product.discount_price || ''}
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
+                     {product.discount_price || '-'}
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ ADDED: Offer Expires At */}
+              <div>
+                <label className={labelClass}>{t.offerExpires}</label>
+                {isEditing ? (
+                  <input type="datetime-local" value={formData.offer_expires_at || ''} onChange={e => setFormData({...formData, offer_expires_at: e.target.value})} className={inputClass()} dir="ltr" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center text-xs">
+                     {product.offer_expires_at ? formatDate(product.offer_expires_at) : '-'}
                   </div>
                 )}
               </div>
 
               <div>
                 <label className={labelClass}>{t.totalStock}</label>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 min-h-[42px] flex items-center cursor-default">
+                <div className="bg-zinc-100 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center font-mono">
                   {currentTotalStock}
                 </div>
               </div>
@@ -410,18 +510,18 @@ export default function ProductDetailsClient({
 
             {/* Warehouse Allocations Table */}
             <div>
-              <label className="text-xs font-semibold text-gray-800 block mb-3">
+              <label className="text-[13px] font-medium text-zinc-700 block mb-3">
                 {t.warehouseAlloc}
               </label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="border border-zinc-200 rounded-md overflow-hidden">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-200">
+                  <thead className="bg-zinc-50 text-xs font-medium text-zinc-500 border-b border-zinc-200">
                     <tr>
-                      <th className="px-4 py-3">{t.table.warehouse}</th>
-                      <th className="px-4 py-3">{t.table.stock}</th>
+                      <th className="px-4 py-2">{t.table.warehouse}</th>
+                      <th className="px-4 py-2">{t.table.stock}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-zinc-200">
                     {warehouses.length > 0 ? (
                       warehouses.map((w) => {
                         const whStock = isEditing 
@@ -429,20 +529,20 @@ export default function ProductDetailsClient({
                           : (productStock?.find(s => s.warehouse_id === w.id)?.stock || 0);
 
                         return (
-                          <tr key={w.id} className="bg-white hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-700">
+                          <tr key={w.id} className="bg-white hover:bg-zinc-50 transition-colors">
+                            <td className="px-4 py-2.5 font-medium text-zinc-700">
                               {lang === 'ar' ? w.name_ar || w.name : w.name}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-2.5 w-48">
                               {isEditing ? (
                                 <input 
                                   type="number" min="0" value={whStock} 
                                   onChange={(e) => handleWarehouseStockChange(w.id, e.target.value)} 
-                                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d] outline-none transition-all" 
+                                  className="w-full bg-white border border-zinc-200 rounded-md px-3 py-1.5 text-sm text-zinc-900 focus:border-[#21c45d] focus:ring-1 focus:ring-[#21c45d] outline-none transition-all shadow-sm" 
                                   placeholder="0" dir="ltr"
                                 />
                               ) : (
-                                <span className="text-gray-900">{whStock}</span>
+                                <span className="text-zinc-900 font-mono">{whStock}</span>
                               )}
                             </td>
                           </tr>
@@ -450,7 +550,7 @@ export default function ProductDetailsClient({
                       })
                     ) : (
                       <tr>
-                        <td colSpan="2" className="px-4 py-6 text-center text-gray-500 cursor-default">No warehouses configured.</td>
+                        <td colSpan="2" className="px-4 py-6 text-center text-zinc-500 cursor-default">No warehouses configured.</td>
                       </tr>
                     )}
                   </tbody>
@@ -460,20 +560,20 @@ export default function ProductDetailsClient({
           </div>
 
           {/* 3. CONTENT & DESCRIPTIONS CARD */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-5 flex items-center gap-2">
               <Icon name="DocumentTextIcon" size={18} className="text-[#21c45d]" variant="outline" />
               {t.content}
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="space-y-5">
                 <div>
                   <label className={labelClass}>{t.shortDesc}</label>
                   {isEditing ? (
                     <textarea rows={3} value={formData.short_description || ''} onChange={e => setFormData({...formData, short_description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[80px] cursor-default">
-                      {product.short_description || ''}
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[80px]">
+                      {product.short_description || t.noData}
                     </div>
                   )}
                 </div>
@@ -482,21 +582,21 @@ export default function ProductDetailsClient({
                   {isEditing ? (
                     <textarea rows={5} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[120px] cursor-default">
-                      {product.description || ''}
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[120px]">
+                      {product.description || t.noData}
                     </div>
                   )}
                 </div>
               </div>
               
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div>
                   <label className={labelClass}>{t.shortDesc_ar}</label>
                   {isEditing ? (
                     <textarea rows={3} value={formData.short_description_ar || ''} onChange={e => setFormData({...formData, short_description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[80px] flex justify-end text-right cursor-default" dir="rtl">
-                      {product.short_description_ar || ''}
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[80px] flex justify-end text-right" dir="rtl">
+                      {product.short_description_ar || t.noData}
                     </div>
                   )}
                 </div>
@@ -505,11 +605,41 @@ export default function ProductDetailsClient({
                   {isEditing ? (
                     <textarea rows={5} value={formData.description_ar || ''} onChange={e => setFormData({...formData, description_ar: e.target.value})} className={`${inputClass()} resize-none`} dir="rtl" />
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 min-h-[120px] flex justify-end text-right cursor-default" dir="rtl">
-                      {product.description_ar || ''}
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[120px] flex justify-end text-right" dir="rtl">
+                      {product.description_ar || t.noData}
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ✅ ADDED: SEO & METADATA CARD */}
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-5 flex items-center gap-2">
+              <Icon name="GlobeAltIcon" size={18} className="text-[#21c45d]" variant="outline" />
+              {t.seo}
+            </h2>
+            <div className="space-y-5">
+              <div>
+                <label className={labelClass}>{t.metaTitle}</label>
+                {isEditing ? (
+                  <input type="text" value={formData.meta_title || ''} onChange={e => setFormData({...formData, meta_title: e.target.value})} className={inputClass()} dir="ltr" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[38px] flex items-center">
+                    {product.meta_title || t.noData}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>{t.metaDesc}</label>
+                {isEditing ? (
+                  <textarea rows={2} value={formData.meta_description || ''} onChange={e => setFormData({...formData, meta_description: e.target.value})} className={`${inputClass()} resize-none`} dir="ltr" />
+                ) : (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 min-h-[60px]">
+                    {product.meta_description || t.noData}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -520,30 +650,30 @@ export default function ProductDetailsClient({
         <div className="lg:col-span-4 space-y-6">
           
           {/* PRODUCT IMAGES CARD */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-4 flex items-center gap-2">
               <Icon name="PhotoIcon" size={18} className="text-[#21c45d]" variant="outline" />
               {t.imagesTitle}
             </h2>
             
             {isEditing ? (
                <div className="space-y-4">
-                  <div className="aspect-square w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center p-2 cursor-pointer">
+                  <div className="aspect-square w-full bg-zinc-50 rounded-md border border-zinc-200 overflow-hidden flex items-center justify-center p-2 cursor-pointer">
                     {activeImage ? (
-                      <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded-lg mix-blend-multiply" />
+                      <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded mix-blend-multiply" />
                     ) : (
-                      <Icon name="PhotoIcon" size={48} className="text-gray-300" />
+                      <Icon name="PhotoIcon" size={48} className="text-zinc-300" />
                     )}
                   </div>
                   
                   <div className="grid grid-cols-4 gap-2">
                     {formData.images?.map((img, idx) => (
-                      <div key={idx} className={`relative aspect-square rounded-lg border overflow-hidden group bg-gray-50 cursor-pointer ${activeImage === img ? 'border-[#21c45d]' : 'border-gray-200'}`} onClick={() => setActiveImage(img)}>
+                      <div key={idx} className={`relative aspect-square rounded-md border overflow-hidden group bg-zinc-50 cursor-pointer ${activeImage === img ? 'border-[#21c45d]' : 'border-zinc-200'}`} onClick={() => setActiveImage(img)}>
                         <img src={img} className="w-full h-full object-cover mix-blend-multiply" alt={`Product ${idx}`} />
                         <button 
                           type="button"
                           onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
-                          className="absolute top-1 right-1 p-1 bg-white/90 text-red-500 rounded text-xs opacity-0 group-hover:opacity-100 transition-all hover:bg-white border border-gray-200 shadow-sm cursor-pointer"
+                          className="absolute top-1 right-1 p-1 bg-white/90 text-red-500 rounded text-xs opacity-0 group-hover:opacity-100 transition-all hover:bg-white border border-zinc-200 shadow-sm cursor-pointer"
                         >
                           <Icon name="TrashIcon" size={12} />
                         </button>
@@ -551,10 +681,10 @@ export default function ProductDetailsClient({
                     ))}
                   </div>
 
-                  <label className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#21c45d] hover:border-[#21c45d] transition-all duration-300 cursor-pointer bg-white">
-                    <Icon name="CloudArrowUpIcon" size={24} className="mb-1" />
+                  <label className="w-full py-4 rounded-md border border-dashed border-zinc-300 flex flex-col items-center justify-center text-zinc-500 hover:bg-zinc-50 hover:text-[#21c45d] hover:border-[#21c45d] transition-all duration-300 cursor-pointer bg-white">
+                    <Icon name="ArrowUpTrayIcon" size={20} className="mb-1" />
                     <span className="text-sm font-medium">{t.addImage}</span>
-                    <span className="text-[10px] text-gray-400 mt-1">JPG, PNG up to 5MB</span>
+                    <span className="text-xs text-zinc-400 mt-1">JPG, PNG up to 5MB</span>
                     <input 
                       type="file" 
                       accept="image/*" 
@@ -566,108 +696,122 @@ export default function ProductDetailsClient({
                </div>
             ) : (
               <div className="space-y-4">
-                <div className="aspect-[4/3] w-full bg-[#f4f6f4] rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center p-4 cursor-pointer">
+                <div className="aspect-[4/3] w-full bg-zinc-50 rounded-md border border-zinc-200 overflow-hidden flex items-center justify-center p-4">
                   {activeImage ? (
-                    <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded-lg mix-blend-multiply" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <img src={activeImage} alt={product.name} className="w-full h-full object-cover rounded mix-blend-multiply" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   ) : (
-                    <Icon name="PhotoIcon" size={48} className="text-gray-200" />
+                    <Icon name="PhotoIcon" size={48} className="text-zinc-200" />
                   )}
                 </div>
                 {product.images?.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 gap-2">
                     {product.images.map((img, idx) => (
                       <button 
                         key={idx} onClick={() => setActiveImage(img)}
-                        className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 bg-gray-50 ${activeImage === img ? 'border-[#21c45d]' : 'border-transparent hover:border-gray-200'}`}
+                        className={`aspect-square cursor-pointer rounded-md overflow-hidden border transition-all duration-300 bg-zinc-50 ${activeImage === img ? 'border-[#21c45d]' : 'border-transparent hover:border-zinc-200'}`}
                       >
                         <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover mix-blend-multiply" />
                       </button>
                     ))}
                   </div>
                 )}
-                
-                {/* Visual Add Image box even in view mode to match design perfectly */}
-                <div className="w-full py-4 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 bg-white cursor-pointer hover:bg-gray-50 transition-colors">
-                    <Icon name="CloudArrowUpIcon" size={20} className="mb-1" />
-                    <span className="text-sm font-medium text-gray-600">{t.addImage}</span>
-                    <span className="text-[10px] text-gray-400 mt-0.5">JPG, PNG up to 5MB</span>
-                </div>
               </div>
             )}
           </div>
 
           {/* PRODUCT SUMMARY CARD (FLAGS & META) */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-6">
+          <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-800 mb-5">
               {t.flags}
             </h2>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
+              {/* Featured */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Icon name="StarIcon" size={18} variant="outline" className="text-gray-400" />
-                  <span className="text-sm font-medium cursor-default">{t.is_featured}</span>
+                <div className="flex items-center gap-3 text-zinc-600">
+                  <Icon name="StarIcon" size={18} variant="outline" className="text-zinc-400" />
+                  <span className="text-sm font-medium">{t.is_featured}</span>
                 </div>
                 {isEditing ? (
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked={formData.is_featured || false} onChange={e => setFormData({...formData, is_featured: e.target.checked})} className="sr-only peer cursor-pointer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                    <input type="checkbox" checked={formData.is_featured || false} onChange={e => setFormData({...formData, is_featured: e.target.checked})} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d] peer-checked:border-[#21c45d]"></div>
                   </label>
                 ) : (
-                  <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_featured ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                  <div className={`w-9 h-5 rounded-full relative ${product.is_featured ? 'bg-[#21c45d]' : 'bg-zinc-200'}`}>
                      <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_featured ? 'left-[18px]' : 'left-[2px]'}`}></div>
                   </div>
                 )}
               </div>
 
+              {/* Best Seller */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Icon name="TrophyIcon" size={18} variant="outline" className="text-gray-400" />
-                  <span className="text-sm font-medium cursor-default">{t.is_best_seller}</span>
+                <div className="flex items-center gap-3 text-zinc-600">
+                  <Icon name="TrophyIcon" size={18} variant="outline" className="text-zinc-400" />
+                  <span className="text-sm font-medium">{t.is_best_seller}</span>
                 </div>
                 {isEditing ? (
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked={formData.is_best_seller || false} onChange={e => setFormData({...formData, is_best_seller: e.target.checked})} className="sr-only peer cursor-pointer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                    <input type="checkbox" checked={formData.is_best_seller || false} onChange={e => setFormData({...formData, is_best_seller: e.target.checked})} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d] peer-checked:border-[#21c45d]"></div>
                   </label>
                 ) : (
-                   <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_best_seller ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                   <div className={`w-9 h-5 rounded-full relative ${product.is_best_seller ? 'bg-[#21c45d]' : 'bg-zinc-200'}`}>
                      <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_best_seller ? 'left-[18px]' : 'left-[2px]'}`}></div>
                   </div>
                 )}
               </div>
 
+              {/* On Sale */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Icon name="TagIcon" size={18} variant="outline" className="text-gray-400" />
-                  <span className="text-sm font-medium cursor-default">{t.is_on_sale}</span>
+                <div className="flex items-center gap-3 text-zinc-600">
+                  <Icon name="TagIcon" size={18} variant="outline" className="text-zinc-400" />
+                  <span className="text-sm font-medium">{t.is_on_sale}</span>
                 </div>
                 {isEditing ? (
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked={formData.is_on_sale || false} onChange={e => setFormData({...formData, is_on_sale: e.target.checked})} className="sr-only peer cursor-pointer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d]"></div>
+                    <input type="checkbox" checked={formData.is_on_sale || false} onChange={e => setFormData({...formData, is_on_sale: e.target.checked})} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d] peer-checked:border-[#21c45d]"></div>
                   </label>
                 ) : (
-                   <div className={`w-9 h-5 rounded-full relative cursor-default ${product.is_on_sale ? 'bg-[#21c45d]' : 'bg-gray-200'}`}>
+                   <div className={`w-9 h-5 rounded-full relative ${product.is_on_sale ? 'bg-[#21c45d]' : 'bg-zinc-200'}`}>
                      <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_on_sale ? 'left-[18px]' : 'left-[2px]'}`}></div>
                   </div>
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-200 space-y-4">
+              {/* ✅ ADDED: Weekly Offer */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-zinc-600">
+                  <Icon name="FireIcon" size={18} variant="outline" className="text-zinc-400" />
+                  <span className="text-sm font-medium">{t.is_weekly_offer}</span>
+                </div>
+                {isEditing ? (
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={formData.is_weekly_offer || false} onChange={e => setFormData({...formData, is_weekly_offer: e.target.checked})} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#21c45d] peer-checked:border-[#21c45d]"></div>
+                  </label>
+                ) : (
+                   <div className={`w-9 h-5 rounded-full relative ${product.is_weekly_offer ? 'bg-[#21c45d]' : 'bg-zinc-200'}`}>
+                     <div className={`absolute top-[2px] w-4 h-4 bg-white rounded-full transition-all ${product.is_weekly_offer ? 'left-[18px]' : 'left-[2px]'}`}></div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-zinc-200 space-y-3">
                  <div className="flex justify-between items-center text-xs">
-                   <div className="flex items-center gap-2 text-gray-500 cursor-default">
-                     <Icon name="CalendarIcon" size={16} />
+                   <div className="flex items-center gap-2 text-zinc-500">
+                     <Icon name="CalendarIcon" size={14} />
                      {t.meta.created}
                    </div>
-                   <span className="font-medium text-gray-700 cursor-default">{formatDate(product.created_at)}</span>
+                   <span className="font-medium text-zinc-700">{formatDate(product.created_at)}</span>
                  </div>
                  <div className="flex justify-between items-center text-xs">
-                   <div className="flex items-center gap-2 text-gray-500 cursor-default">
-                     <Icon name="ClockIcon" size={16} />
+                   <div className="flex items-center gap-2 text-zinc-500">
+                     <Icon name="ClockIcon" size={14} />
                      {t.meta.updated}
                    </div>
-                   <span className="font-medium text-gray-700 cursor-default">{formatDate(product.updated_at)}</span>
+                   <span className="font-medium text-zinc-700">{formatDate(product.updated_at)}</span>
                  </div>
               </div>
 

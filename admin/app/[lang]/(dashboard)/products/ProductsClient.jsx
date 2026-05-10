@@ -40,6 +40,18 @@ export default function ProductsClient({
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
+  // Custom Toast State
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    if (type !== "loading") {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const closeToast = () => setToast(null);
+
   // Calculate the item numbers for the "Showing X to Y of Z" text
   const startItem = total === 0 ? 0 : (currentPage - 1) * limit + 1;
   const endItem = Math.min(currentPage * limit, total);
@@ -58,6 +70,7 @@ export default function ProductsClient({
   const handleCreateProduct = async (formData) => {
     try {
       setIsLoading(true);
+      showToast("Saving product...", "loading");
 
       const res = await fetch('/api/products', {
         method: 'POST',
@@ -69,11 +82,12 @@ export default function ProductsClient({
       const result = await res.json();
 
       if (!res.ok) {
-        alert(result.error || 'Error creating product');
+        showToast(result.error || 'Error creating product', 'error');
         return;
       }
 
       setIsModalOpen(false);
+      showToast("Product saved successfully", "success");
       
       setLoadingAction('refresh');
       startTransition(() => {
@@ -82,7 +96,7 @@ export default function ProductsClient({
 
     } catch (err) {
       console.error(err);
-      alert('Something went wrong');
+      showToast('Something went wrong', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +105,7 @@ export default function ProductsClient({
   const handleDeleteProduct = async (id) => {
     try {
       setIsDeleting(true);
+      showToast("Deleting product...", "loading");
 
       const res = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
@@ -101,12 +116,13 @@ export default function ProductsClient({
       const result = await res.json();
 
       if (!res.ok) {
-        alert(result.error || 'Error deleting product');
+        showToast(result.error || 'Error deleting product', 'error');
         return;
       }
 
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
+      showToast("Product deleted successfully", "success");
       
       setLoadingAction('refresh');
       startTransition(() => {
@@ -115,7 +131,7 @@ export default function ProductsClient({
 
     } catch (err) {
       console.error(err);
-      alert('Something went wrong while deleting');
+      showToast('Something went wrong while deleting', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -123,7 +139,7 @@ export default function ProductsClient({
 
   const translations = {
     en: {
-      title: 'Products', subtitle: 'Manage and monitor all products in your store.', add: 'Add Product', search: 'Search products by name or SKU...', filterCategory: 'All Categories', filterStatus: 'All Status', loading: 'Loading...',
+      title: 'Products', subtitle: 'Manage and monitor all products in your store.', add: 'New Product', search: 'Search products by name or SKU...', filterCategory: 'All Categories', filterStatus: 'All Status', loading: 'Loading...',
       table: { product: 'Product', sku: 'SKU', category: 'Category', price: 'Price (SAR)', stock: 'Stock', status: 'Status', action: 'Actions' },
       status: { published: 'Published', draft: 'Draft' },
       stockState: { inStock: 'In Stock', lowStock: 'Low Stock', out: 'Out of Stock' },
@@ -132,7 +148,7 @@ export default function ProductsClient({
       empty: 'No products found.'
     },
     ar: {
-      title: 'المنتجات', subtitle: 'إدارة ومراقبة جميع المنتجات في متجرك.', add: 'إضافة منتج', search: 'البحث عن منتج بالاسم أو الرمز...', filterCategory: 'جميع الأقسام', filterStatus: 'جميع الحالات', loading: 'جاري التحميل...',
+      title: 'المنتجات', subtitle: 'إدارة ومراقبة جميع المنتجات في متجرك.', add: 'منتج جديد', search: 'البحث عن منتج بالاسم أو الرمز...', filterCategory: 'جميع الأقسام', filterStatus: 'جميع الحالات', loading: 'جاري التحميل...',
       table: { product: 'المنتج', sku: 'رمز المنتج', category: 'القسم', price: 'السعر (ر.س)', stock: 'المخزون', status: 'الحالة', action: 'إجراءات' },
       status: { published: 'منشور', draft: 'مسودة' },
       stockState: { inStock: 'متوفر', lowStock: 'مخزون منخفض', out: 'غير متوفر' },
@@ -144,15 +160,10 @@ export default function ProductsClient({
 
   const t = translations[lang] || translations.en;
 
-  const getStatusBadge = (isPublished) => {
-    if (isPublished) return 'bg-[#ecfdf3] text-[#21c45d]';
-    return 'bg-gray-100 text-gray-500';
-  };
-
   const getStockIndicator = (stock) => {
-    if (stock === 0) return { text: t.stockState.out, dotColor: 'bg-red-500' };
-    if (stock < 20) return { text: t.stockState.lowStock, dotColor: 'bg-orange-400' };
-    return { text: t.stockState.inStock, dotColor: 'bg-[#21c45d]' };
+    if (stock === 0) return { text: t.stockState.out, dotColor: 'bg-red-500', textColor: 'text-red-600' };
+    if (stock < 20) return { text: t.stockState.lowStock, dotColor: 'bg-amber-500', textColor: 'text-amber-600' };
+    return { text: t.stockState.inStock, dotColor: 'bg-[#21c45d]', textColor: 'text-zinc-600' };
   };
 
   // Client-side filtering
@@ -185,10 +196,10 @@ export default function ProductsClient({
     }
 
     return (
-      <div className="hidden md:flex items-center gap-1.5">
+      <div className="hidden md:flex items-center gap-1">
         {pages.map((page, idx) => {
           if (page === '...') {
-            return <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-gray-400">...</span>;
+            return <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-zinc-400">...</span>;
           }
           
           const isActive = page === currentPage;
@@ -197,10 +208,10 @@ export default function ProductsClient({
               key={page}
               onClick={() => handlePageChange(page, `page-${page}`)}
               disabled={isPending}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-semibold transition-colors ${
+              className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium transition-colors ${
                 isActive 
-                  ? 'bg-white border border-[#21c45d] text-[#21c45d]' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-zinc-100 text-zinc-900 border border-zinc-200' 
+                  : 'bg-transparent text-zinc-600 hover:bg-zinc-50 border border-transparent hover:border-zinc-200'
               }`}
             >
               {page}
@@ -211,109 +222,104 @@ export default function ProductsClient({
     );
   };
 
+  const inputClass = "w-full bg-white border border-zinc-200 rounded-md px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#21c45d]/20 focus:border-[#21c45d] transition-all placeholder:text-zinc-400 shadow-sm";
+
   return (
-    <div dir={dir} className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out text-gray-800 pb-12">
+    <div dir={dir} className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300 pb-20 text-zinc-900">
       
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-200">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">
-            {t.title}
-          </h1>
-          <p className="text-[15px] text-gray-500">
-            {t.subtitle}
-          </p>
+          <h1 className="text-2xl font-normal tracking-tight text-zinc-900">{t.title}</h1>
+          <p className="text-sm text-zinc-500 mt-1">{t.subtitle}</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center cursor-pointer gap-2 bg-[#21c45d] text-white px-5 py-2.5 text-sm font-semibold rounded-xl hover:bg-[#1eb053] transition-all duration-300 active:scale-95 shadow-sm shadow-[#21c45d]/20"
+          className="px-4 py-2 bg-[#21c45d] text-white text-sm font-medium rounded-md hover:bg-[#1eb053] transition-all cursor-pointer shadow-sm flex items-center gap-2 justify-center"
         >
-          <Icon name="PlusIcon" size={18} strokeWidth={2.5} />
-          {t.add}
+          <Icon name="PlusIcon" size={16} /> {t.add}
         </button>
       </div>
 
       {/* FILTER BAR */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 focus-within:border-[#21c45d] focus-within:ring-1 focus-within:ring-[#21c45d] transition-all duration-300 group shadow-sm">
-          <Icon name="MagnifyingGlassIcon" size={18} className="text-gray-400 shrink-0 mr-3" />
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex-1 relative">
+          <Icon name="MagnifyingGlassIcon" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input 
             type="text" 
             placeholder={t.search}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none outline-none text-sm w-full text-gray-900 placeholder:text-gray-400 font-medium"
+            className={`${inputClass} pl-9`}
           />
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 md:w-[480px]">
-          {/* Category Filter */}
-          <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 focus-within:border-[#21c45d] focus-within:ring-1 focus-within:ring-[#21c45d] transition-all duration-300 relative cursor-pointer group shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3 md:w-auto">
+          <div className="relative md:w-48">
             <select 
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-700 appearance-none cursor-pointer z-10"
+              className={`${inputClass} appearance-none cursor-pointer`}
             >
               <option value="all">{t.filterCategory}</option>
               {categories?.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.label}</option>
               ))}
             </select>
-            <Icon name="ChevronDownIcon" size={16} className={`text-gray-400 absolute pointer-events-none ${dir === 'rtl' ? 'left-4' : 'right-4'}`} />
+            <Icon name="ChevronDownIcon" size={14} className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none ${dir === 'rtl' ? 'left-3' : 'right-3'}`} />
           </div>
 
-          {/* Published / Draft Filter */}
-          <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 focus-within:border-[#21c45d] focus-within:ring-1 focus-within:ring-[#21c45d] transition-all duration-300 relative cursor-pointer group shadow-sm">
+          <div className="relative md:w-48">
             <select 
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-700 appearance-none cursor-pointer z-10"
+              className={`${inputClass} appearance-none cursor-pointer`}
             >
               <option value="all">{t.filterStatus}</option>
               <option value="true">{t.status.published}</option>
               <option value="false">{t.status.draft}</option>
             </select>
-            <Icon name="ChevronDownIcon" size={16} className={`text-gray-400 absolute pointer-events-none ${dir === 'rtl' ? 'left-4' : 'right-4'}`} />
+            <Icon name="ChevronDownIcon" size={14} className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none ${dir === 'rtl' ? 'left-3' : 'right-3'}`} />
           </div>
         </div>
       </div>
 
-      {/* PRODUCTS TABLE WITH LOADING OVERLAY */}
-      <div className="relative bg-white border border-gray-100 rounded-[20px] shadow-sm flex flex-col pt-2">
+      {/* PRODUCTS TABLE */}
+      <div className="relative bg-white border border-zinc-200 rounded-md shadow-sm overflow-hidden flex flex-col">
         
         {/* Table Loading Overlay */}
         {isPending && (
-          <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center transition-all duration-300 rounded-[20px]">
-            <div className="bg-white px-5 py-3 rounded-xl border border-gray-100 shadow-lg flex items-center gap-3">
-              <Icon name="ArrowPathIcon" size={18} className="animate-spin text-[#21c45d]" />
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-widest">{t.loading}</span>
+          <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] flex items-center justify-center transition-all duration-300">
+            <div className="bg-white px-4 py-2 rounded-md border border-zinc-200 shadow-sm flex items-center gap-2">
+              <Icon name="ArrowPathIcon" size={16} className="animate-spin text-[#21c45d]" />
+              <span className="text-xs font-medium text-zinc-700">{t.loading}</span>
             </div>
           </div>
         )}
 
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className={`text-[13px] font-semibold text-gray-900 border-b border-gray-100 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-              <tr>
-                <th className="px-6 py-4">{t.table.product}</th>
-                <th className="px-6 py-4">{t.table.sku}</th>
-                <th className="px-6 py-4">{t.table.category}</th>
-                <th className="px-6 py-4">{t.table.price}</th>
-                <th className="px-6 py-4">{t.table.stock}</th>
-                <th className="px-6 py-4">{t.table.status}</th>
-                <th className="px-6 py-4 text-center">{t.table.action}</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200 text-xs text-zinc-500 font-medium">
+                <th className="px-6 py-3 font-medium">{t.table.product}</th>
+                <th className="px-6 py-3 font-medium">{t.table.sku}</th>
+                <th className="px-6 py-3 font-medium">{t.table.category}</th>
+                <th className="px-6 py-3 font-medium">{t.table.price}</th>
+                <th className="px-6 py-3 font-medium">{t.table.stock}</th>
+                <th className="px-6 py-3 font-medium">{t.table.status}</th>
+                <th className="px-6 py-3 font-medium text-right w-24">{t.table.action}</th>
               </tr>
             </thead>
-            <tbody className={`divide-y divide-gray-50 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
+            <tbody className="divide-y divide-zinc-200 text-sm">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => {
                   const stockInfo = getStockIndicator(product.stock);
 
                   return (
-                    <tr key={product.id} className="bg-white hover:bg-gray-50/50 transition-colors duration-200 group">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border border-gray-100 overflow-hidden bg-gray-50`}>
+                    <tr key={product.id} className="hover:bg-zinc-50 transition-colors group">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 border border-zinc-200 overflow-hidden bg-zinc-100`}>
                             {product.images?.[0] ? (
                               <img 
                                 src={product.images[0]} 
@@ -325,55 +331,56 @@ export default function ProductsClient({
                                 }}
                               />
                             ) : (
-                              <Icon name="PhotoIcon" size={20} className="text-gray-300" />
+                              <Icon name="PhotoIcon" size={18} className="text-zinc-400" />
                             )}
                           </div>
                           <div className="flex flex-col">
-                            <p className="font-semibold text-gray-900 leading-tight truncate max-w-[220px] text-[14px] mb-0.5">
+                            <span className="font-medium text-zinc-900 truncate max-w-[200px]">
                               {lang === 'ar' ? product.name_ar || product.name : product.name}
-                            </p>
-                            <p className="text-[12px] text-gray-400 font-medium truncate max-w-[220px]">
-                              {product.short_description || 'Product details not provided'}
-                            </p>
+                            </span>
+                            <span className="text-xs text-zinc-500 truncate max-w-[200px]">
+                              {product.short_description || 'No description'}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-[14px] font-medium text-gray-600">{product.sku || '-'}</td>
-                      <td className="px-6 py-5">
-                         <span className="text-[12px] font-medium text-[#21c45d] bg-[#ecfdf3]/50 px-2.5 py-1 rounded-md border border-[#21c45d]/10 inline-block">
-                           {product.category_name || product.category || 'Skincare'}
+                      <td className="px-6 py-3 font-mono text-xs text-zinc-600">{product.sku || '-'}</td>
+                      <td className="px-6 py-3">
+                         <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                           {product.category_name || product.category || 'Uncategorized'}
                          </span>
                       </td>
-                      <td className="px-6 py-5 text-[14px] font-semibold text-gray-800">SAR {product.price}</td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5 font-semibold text-gray-900 text-[13px] mb-0.5">
-                            <span className={`w-2 h-2 rounded-full ${stockInfo.dotColor}`}></span>
+                      <td className="px-6 py-3 font-medium text-zinc-900">SAR {product.price}</td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${stockInfo.dotColor}`}></span>
+                          <span className={`text-sm ${stockInfo.textColor}`}>
                             {product.stock || 0}
-                          </div>
-                          <span className="text-[11px] font-medium text-gray-400 ml-3.5">
-                            {stockInfo.text}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-md text-[12px] font-medium tracking-wide ${getStatusBadge(product.is_published)}`}>
+                      <td className="px-6 py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full border ${
+                          product.is_published 
+                            ? 'bg-emerald-50 text-[#21c45d] border-emerald-200' 
+                            : 'bg-zinc-100 text-zinc-500 border-zinc-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${product.is_published ? 'bg-[#21c45d]' : 'bg-zinc-400'}`}></span>
                           {product.is_published ? t.status.published : t.status.draft}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-                          
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={(e) => {
                               e.preventDefault();
-                              e.stopPropagation();
                               setLoadingAction(`view-${product.slug}`);
                               startTransition(() => {
                                 router.push(`/${lang}/products/${product.slug}`);
                               });
                             }}
-                            className="p-2 text-gray-400 cursor-pointer bg-white border border-gray-200 hover:text-[#21c45d] hover:bg-gray-50 hover:border-gray-300 rounded-xl transition-all duration-200 outline-none flex items-center justify-center"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded cursor-pointer transition-colors"
+                            title="Edit"
                           >
                             {isPending && loadingAction === `view-${product.slug}` ? (
                               <Icon name="ArrowPathIcon" size={16} className="animate-spin" />
@@ -385,15 +392,14 @@ export default function ProductsClient({
                           <button 
                             onClick={(e) => {
                               e.preventDefault();
-                              e.stopPropagation();
                               setProductToDelete(product);
                               setIsDeleteModalOpen(true);
                             }}
-                            className="p-2 text-gray-400 cursor-pointer bg-white border border-gray-200 hover:text-red-500 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all duration-200 outline-none flex items-center justify-center"
+                            className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer transition-colors"
+                            title="Delete"
                           >
                             <Icon name="TrashIcon" size={16} />
                           </button>
-
                         </div>
                       </td>
                     </tr>
@@ -401,23 +407,25 @@ export default function ProductsClient({
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center text-gray-500 bg-white font-medium text-[15px]">{t.empty}</td>
+                  <td colSpan="7" className="px-6 py-12 text-center text-zinc-400 bg-white">
+                    {t.empty}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* DYNAMIC PAGINATION */}
-        <div className="px-6 py-5 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-b-[20px]">
-          <p className="text-[13px] text-gray-500 font-medium">
-            {t.pagination.showing} <span className="font-semibold text-gray-900">{startItem}</span> {t.pagination.to} <span className="font-semibold text-gray-900">{endItem}</span> {t.pagination.of} <span className="font-semibold text-gray-900">{total}</span> {t.pagination.results}
+        {/* PAGINATION */}
+        <div className="px-6 py-4 border-t border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-50/50">
+          <p className="text-xs text-zinc-500 font-medium">
+            {t.pagination.showing} <span className="font-semibold text-zinc-900">{startItem}</span> {t.pagination.to} <span className="font-semibold text-zinc-900">{endItem}</span> {t.pagination.of} <span className="font-semibold text-zinc-900">{total}</span>
           </p>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => handlePageChange(currentPage - 1, 'prev')}
               disabled={currentPage <= 1 || isPending}
-              className="px-3 py-2 text-[13px] font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm"
             >
               <Icon name="ChevronLeftIcon" size={14} className={dir === 'rtl' ? 'rotate-180' : ''} />
               {t.pagination.prev}
@@ -428,25 +436,29 @@ export default function ProductsClient({
             <button 
               onClick={() => handlePageChange(currentPage + 1, 'next')}
               disabled={currentPage >= totalPages || totalPages === 0 || isPending}
-              className="px-3 py-2 text-[13px] font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm"
             >
               {t.pagination.next}
               <Icon name="ChevronRightIcon" size={14} className={dir === 'rtl' ? 'rotate-180' : ''} />
             </button>
-
-            {/* Limit Selector Mockup */}
-            <div className="hidden sm:flex relative items-center ml-2">
-               <select className="appearance-none bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-[13px] font-medium text-gray-600 focus:outline-none focus:border-[#21c45d] cursor-pointer">
-                 <option value="16">16 / {t.pagination.page}</option>
-                 <option value="32">32 / {t.pagination.page}</option>
-                 <option value="64">64 / {t.pagination.page}</option>
-               </select>
-               <Icon name="ChevronDownIcon" size={14} className="absolute right-2.5 text-gray-400 pointer-events-none" />
-            </div>
           </div>
         </div>
-
       </div>
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[200] animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-3 bg-zinc-900 text-white px-4 py-3 rounded-md shadow-lg border border-zinc-800 text-sm font-medium min-w-[250px]">
+          {toast.type === "loading" && <Icon name="ArrowPathIcon" size={18} className="animate-spin text-[#21c45d]" />}
+          {toast.type === "success" && <Icon name="CheckCircleIcon" size={18} className="text-[#21c45d]" />}
+          {toast.type === "error" && <Icon name="ExclamationCircleIcon" size={18} className="text-red-400" />}
+          <span className="flex-1">{toast.message}</span>
+          {toast.type !== "loading" && (
+            <button onClick={closeToast} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
+              <Icon name="XMarkIcon" size={16} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* CREATE MODAL */}
       <ProductModal
@@ -472,7 +484,6 @@ export default function ProductsClient({
         lang={lang}
         isLoading={isDeleting}
       />
-
     </div>
   );
 }

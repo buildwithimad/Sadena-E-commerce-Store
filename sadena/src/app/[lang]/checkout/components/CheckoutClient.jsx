@@ -161,40 +161,16 @@ export default function CheckoutClient({ lang, t }) {
 
       // ✅ CARD FLOW
       if (paymentMethod === "card") {
-        if (paymentMethod === "card") {
   if (!data.payment_url) {
     throw new Error("Payment initialization failed");
   }
 
+  // 🚀 Redirect user to EDFAPay
   window.location.href = data.payment_url;
-}
+  return;
 
-        const PAYMENT_URL = process.env.NEXT_PUBLIC_AVAPAY_URL;
-        if (!PAYMENT_URL) throw new Error("Payment gateway is not configured yet");
 
-        const formElement = document.createElement("form");
-        formElement.method = "POST";
-        formElement.action = PAYMENT_URL;
-
-        const fields = {
-          merchant_id: payment.merchant_id,
-          merchant_password: payment.merchant_password,
-          order_id: payment.order_id,
-          amount: payment.amount,
-          currency: payment.currency,
-          callback_url: payment.callback_url,
-        };
-
-        Object.entries(fields).forEach(([key, value]) => {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          formElement.appendChild(input);
-        });
-
-        document.body.appendChild(formElement);
-        formElement.submit();
+        
       }
 
     } catch (err) {

@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkAdmin } from '@/lib/auth'; // ✅ The Gatekeeper
 
+// =======================================================================
+// 🟢 CREATE PRODUCT (POST)
+// =======================================================================
 export async function POST(req) {
   try {
     // ==========================================
@@ -14,7 +17,7 @@ export async function POST(req) {
     const body = await req.json();
 
     // -------------------------------
-    // 🔒 BASIC VALIDATION
+    // 🔒 BASIC & LOGICAL VALIDATION
     // -------------------------------
     if (!body.name || typeof body.name !== 'string') {
       return Response.json({ error: 'Product name is required' }, { status: 400 });
@@ -22,6 +25,16 @@ export async function POST(req) {
 
     if (!body.price || isNaN(body.price)) {
       return Response.json({ error: 'Valid price is required' }, { status: 400 });
+    }
+
+    // ✅ NEW: Discount price validation
+    if (body.discount_price && Number(body.discount_price) >= Number(body.price)) {
+      return Response.json({ error: 'Discount price must be less than the original price' }, { status: 400 });
+    }
+
+    // ✅ NEW: Ensure images array is not empty
+    if (!body.images || !Array.isArray(body.images) || body.images.length === 0) {
+      return Response.json({ error: 'At least one product image is required' }, { status: 400 });
     }
 
     // -------------------------------
@@ -62,7 +75,7 @@ export async function POST(req) {
       : Number(body.stock) || 0;
 
     // -------------------------------
-    // ✅ PRODUCT DATA OBJECT
+    // ✅ PRODUCT DATA OBJECT (With New Fields)
     // -------------------------------
     const productData = {
       name: body.name,
@@ -75,7 +88,7 @@ export async function POST(req) {
       price: Number(body.price),
       discount_price: body.discount_price ? Number(body.discount_price) : null,
       currency: body.currency || 'SAR',
-      images: Array.isArray(body.images) ? body.images : [],
+      images: body.images,
       category_id: body.category_id || null,
       tags: Array.isArray(body.tags) ? body.tags : [],
       stock: totalStock,
@@ -91,7 +104,18 @@ export async function POST(req) {
       is_published: Boolean(body.is_published),
       is_featured: Boolean(body.is_featured),
       is_best_seller: Boolean(body.is_best_seller),
-      is_on_sale: Boolean(body.is_on_sale)
+      
+      // ✅ NEW: Auto-set is_on_sale based on discount_price existence
+      is_on_sale: Boolean(body.discount_price && Number(body.discount_price) > 0),
+      
+      // ✅ NEW: Added Missing Fields
+      is_weekly_offer: Boolean(body.is_weekly_offer),
+      badge: body.badge || null,
+      badge_ar: body.badge_ar || null,
+      position: Number(body.position) || 0,
+      offer_expires_at: body.offer_expires_at ? new Date(body.offer_expires_at).toISOString() : null,
+      meta_title: body.meta_title || null,
+      meta_description: body.meta_description || null,
     };
 
     // -------------------------------
@@ -151,3 +175,4 @@ export async function POST(req) {
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

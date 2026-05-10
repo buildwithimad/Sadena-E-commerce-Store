@@ -110,20 +110,96 @@ export async function getProductBySlug(slug, lang = 'en') {
   return { product, related };
 }
 
-// 🔥 NEW: Fetch Homepage Products Concurrently
+// 🔥 FULL HOMEPAGE DATA (PRODUCTION READY)
 export async function getHomeProducts(lang = 'en') {
   const supabase = await createClient();
+  const now = new Date().toISOString();
 
-  // Run all 3 queries at the exact same time for maximum speed
-  const [bestSellersRes, featuredRes, offersRes] = await Promise.all([
-    supabase.from('products').select('*').eq('is_best_seller', true).limit(8),
-    supabase.from('products').select('*').eq('is_featured', true).limit(8),
-    supabase.from('products').select('*').not('discount_price', 'is', null).limit(8)
+  const [
+    bestSellersRes,
+    featuredRes,
+    offersRes,
+    newArrivalsRes,
+    specialRes,
+    weeklyRes
+  ] = await Promise.all([
+
+    // 🔥 1. BEST SELLERS (based on sales)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .order('sales_count', { ascending: false })
+      .limit(8),
+
+    // ⭐ 2. FEATURED (manual + ordered)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_featured', true)
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .order('position', { ascending: true })
+      .limit(8),
+
+    // 💸 3. OFFERS (discount + not expired)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .not('discount_price', 'is', null)
+      .gt('discount_price', 0)
+      .or(`offer_expires_at.is.null,offer_expires_at.gt.${now}`)
+      .limit(8),
+
+    // 🆕 4. NEW ARRIVALS (latest)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .order('created_at', { ascending: false })
+      .limit(8),
+
+    // 💎 5. SPECIAL PICKS (badge based)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('badge', 'Special')
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .limit(8),
+
+    // 🔥 6. WEEKLY OFFER (single highlighted product)
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_weekly_offer', true)
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .order('position', { ascending: true })
+      .limit(1)
+      .maybeSingle()
   ]);
+
+  // ⚠️ Basic error logging (optional but recommended)
+  if (bestSellersRes.error) console.error('Best Sellers Error:', bestSellersRes.error);
+  if (featuredRes.error) console.error('Featured Error:', featuredRes.error);
+  if (offersRes.error) console.error('Offers Error:', offersRes.error);
+  if (newArrivalsRes.error) console.error('New Arrivals Error:', newArrivalsRes.error);
+  if (specialRes.error) console.error('Special Error:', specialRes.error);
+  if (weeklyRes.error) console.error('Weekly Error:', weeklyRes.error);
 
   return {
     bestSellers: (bestSellersRes.data || []).map(p => normalizeProduct(p, lang)),
     featured: (featuredRes.data || []).map(p => normalizeProduct(p, lang)),
     offers: (offersRes.data || []).map(p => normalizeProduct(p, lang)),
+    newArrivals: (newArrivalsRes.data || []).map(p => normalizeProduct(p, lang)),
+    special: (specialRes.data || []).map(p => normalizeProduct(p, lang)),
+    weekly: weeklyRes.data
+      ? normalizeProduct(weeklyRes.data, lang)
+      : null
   };
 }

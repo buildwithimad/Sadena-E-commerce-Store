@@ -1,11 +1,28 @@
+"use client";
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import Container from '@/components/ui/Container';
 import ProductCard from '@/components/ProductCard';
 
-export default function OffersSection({ lang, t, products = [] }) {
+export default function OffersSection({ lang, t, products = [], banners = [] }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const items = products?.slice(0, 4);
+  const items = products?.slice(0, 8); // Showing up to 8 to match other sections, change to 4 if you prefer a single row
+
+  // Slider State
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Auto-play slider logic (only runs if there are multiple banners)
+  useEffect(() => {
+    if (!banners || banners.length <= 1) return;
+    
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % banners.length);
+    }, 5000); // Changes every 5 seconds
+    
+    return () => clearInterval(timer);
+  }, [banners?.length]);
 
   if (!items?.length) return null;
 
@@ -52,8 +69,83 @@ export default function OffersSection({ lang, t, products = [] }) {
             </Link>
           </div>
         </RevealOnScroll>
+      </Container>
 
-        {/* GRID: Flat, no borders, no shadows */}
+      {/* DYNAMIC BANNERS SLIDER (100% Full Width) */}
+      {banners?.length > 0 && (
+        <RevealOnScroll className="w-full mb-12 sm:mb-16">
+          <div className="relative w-full h-[400px] sm:h-[500px] lg:h-[600px] overflow-hidden group bg-gray-900">
+            {banners.map((banner, index) => (
+              <div 
+                key={banner.id || index}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+              >
+                {/* Dark Gradient Overlay for text readability */}
+                <div className="absolute inset-0 bg-black/40 z-10" />
+                
+                <img 
+                  src={banner.image} // Make sure this matches your DB column name (image or image_url)
+                  alt={banner.title || 'Sadena Banner'} 
+                  className={`w-full h-full object-cover transition-transform duration-[10000ms] ${index === currentSlide ? 'scale-110' : 'scale-100'}`}
+                />
+
+                {/* CENTERED TEXT CONTENT INSIDE IMAGE */}
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-4">
+                  
+                  {/* Banner Subtitle / Eyebrow */}
+                  {banner.subtitle && (
+                    <span className="text-[#93bfa2] text-sm sm:text-base font-bold tracking-[0.2em] uppercase mb-4 drop-shadow-md">
+                      {banner.subtitle}
+                    </span>
+                  )}
+
+                  {/* Main Slide Title */}
+                  {banner.title && (
+                    <h3 className="text-white text-4xl sm:text-5xl lg:text-6xl font-display font-bold drop-shadow-lg mb-8 max-w-4xl">
+                      {banner.title}
+                    </h3>
+                  )}
+
+                  {/* Dynamic CTA Button */}
+                  <Link
+                    href={banner.link || `/${lang}/products?category=offers`}
+                    className="inline-flex items-center gap-3 px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-sm text-sm font-bold tracking-widest uppercase transition-all duration-300 hover:scale-105"
+                  >
+                    {lang === 'ar' ? 'عرض العروض' : 'View offers'}
+                    <svg 
+                      className={`w-4 h-4 ${dir === 'rtl' ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor" 
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+
+                </div>
+              </div>
+            ))}
+
+            {/* Slider Dots (Only show if more than 1 banner) */}
+            {banners.length > 1 && (
+              <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center gap-2">
+                {banners.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/80'}`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </RevealOnScroll>
+      )}
+
+      {/* GRID: Flat, no borders, no shadows */}
+      <Container>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-12 sm:gap-x-6 lg:gap-x-8">
           {items?.map((product, i) => (
             <RevealOnScroll key={product?.id} delay={i + 1}>

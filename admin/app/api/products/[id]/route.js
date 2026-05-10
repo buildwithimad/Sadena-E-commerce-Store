@@ -1,7 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkAdmin } from '@/lib/auth'; // ✅ The Gatekeeper
 
-// 🟡 UPDATE PRODUCT
+// =======================================================================
+// 🟡 UPDATE PRODUCT (PUT)
+// =======================================================================
 export async function PUT(req, { params }) {
   try {
     // ==========================================
@@ -19,13 +21,20 @@ export async function PUT(req, { params }) {
 
     const body = await req.json();
 
-    // ✅ VALIDATION
+    // ✅ BASIC & LOGICAL VALIDATION
     if (!body.name || !body.price) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // ✅ NEW: Discount price validation
     if (body.discount_price && Number(body.discount_price) >= Number(body.price)) {
       return Response.json({ error: 'Discount must be less than price' }, { status: 400 });
+    }
+
+    // ✅ NEW: Ensure images array is not empty
+    const incomingImages = Array.isArray(body.images) ? body.images : [];
+    if (incomingImages.length === 0) {
+      return Response.json({ error: 'At least one product image is required' }, { status: 400 });
     }
 
     // 🟢 2. GET OLD PRODUCT (To compare images for deletion)
@@ -36,7 +45,6 @@ export async function PUT(req, { params }) {
       .single();
 
     const oldImages = oldProduct?.images || [];
-    const incomingImages = Array.isArray(body.images) ? body.images : [];
     
     // Separate existing URLs from new base64 uploads
     const existingUrls = incomingImages.filter(img => img.startsWith('http'));
@@ -116,7 +124,19 @@ export async function PUT(req, { params }) {
       is_published: Boolean(body.is_published),
       is_featured: Boolean(body.is_featured),
       is_best_seller: Boolean(body.is_best_seller),
-      is_on_sale: Boolean(body.is_on_sale),
+      
+      // ✅ NEW: Auto-set is_on_sale
+      is_on_sale: Boolean(body.discount_price && Number(body.discount_price) > 0),
+      
+      // ✅ NEW: Added Missing Fields
+      is_weekly_offer: Boolean(body.is_weekly_offer),
+      badge: body.badge || null,
+      badge_ar: body.badge_ar || null,
+      position: Number(body.position) || 0,
+      offer_expires_at: body.offer_expires_at ? new Date(body.offer_expires_at).toISOString() : null,
+      meta_title: body.meta_title || null,
+      meta_description: body.meta_description || null,
+
       ...(slug && { slug })
     };
 
@@ -157,7 +177,9 @@ export async function PUT(req, { params }) {
   }
 }
 
-// 🔴 DELETE PRODUCT
+// =======================================================================
+// 🔴 DELETE PRODUCT (DELETE)
+// =======================================================================
 export async function DELETE(req, { params }) {
   try {
     // ==========================================
@@ -184,11 +206,17 @@ export async function DELETE(req, { params }) {
       return Response.json({ error: fetchError.message }, { status: 500 });
     }
 
-    // 🟢 3. DELETE IMAGES FROM STORAGE
-    if (product.images && product.images.length > 0) {
+    // 🟢 3. ✅ DELETE IMAGES FROM STORAGE
+    // Extracts the file path cleanly even if the URL structure contains subdirectories
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const filePaths = product.images.map((url) => {
-        const parts = url.split('/storage/v1/object/public/products/');
-        return parts[1];
+        try {
+          // Standard extraction for Supabase Storage public URLs
+          const parts = url.split('/storage/v1/object/public/products/');
+          return parts[1] || null; 
+        } catch {
+          return null;
+        }
       }).filter(Boolean);
 
       if (filePaths.length > 0) {
@@ -198,6 +226,7 @@ export async function DELETE(req, { params }) {
 
         if (storageError) {
           console.error('Storage delete error:', storageError);
+          // Non-blocking error. Proceed to delete DB record even if storage cleanup fails slightly.
         }
       }
     }
@@ -217,7 +246,7 @@ export async function DELETE(req, { params }) {
     return Response.json({
       success: true,
       data,
-      message: 'Product and images deleted successfully'
+      message: 'Product and related images deleted successfully'
     });
 
   } catch (err) {
