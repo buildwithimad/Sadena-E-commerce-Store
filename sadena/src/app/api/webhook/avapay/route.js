@@ -2,22 +2,25 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    let body;
 
-    console.log("EDFA WEBHOOK:", body);
+    // 🔥 Handle BOTH JSON + form-data
+    try {
+      body = await req.json();
+    } catch {
+      const formData = await req.formData();
+      body = Object.fromEntries(formData.entries());
+    }
 
-    // =========================
-    // 🔥 EXTRACT DATA (adjust if needed)
-    // =========================
+    console.log("🔥 WEBHOOK HIT:", body);
+
     const order_id = body.order_id || body.orderId;
-    const status = body.status;
+    const status = body.status || body.payment_status;
     const payment_id = body.transaction_id || body.payment_id;
-    const amount = Number(body.amount);
+    const amount = Number(body.amount || body.order_amount);
 
-    // =========================
-    // 🔐 BASIC VALIDATION
-    // =========================
     if (!order_id || !status) {
+      console.log("❌ Missing fields");
       return new Response("Missing fields", { status: 400 });
     }
 
@@ -26,38 +29,35 @@ export async function POST(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // =========================
-    // 🔍 FETCH ORDER
-    // =========================
-    const { data: order } = await supabase
+    // 🔍 Find order
+    const { data: order, error } = await supabase
       .from("orders")
-      .select("id, total, payment_status")
-      .eq("id", order_id)
+      .select("id, order_number, total, payment_status")
+      .eq("order_number", order_id)
       .single();
 
-    if (!order) {
+    if (error || !order) {
+      console.log("❌ Order not found:", order_id);
       return new Response("Order not found", { status: 404 });
     }
 
-    // =========================
-    // 🔐 AMOUNT CHECK
-    // =========================
+    // 🔐 Amount check
     if (amount && Number(order.total) !== amount) {
+      console.log("❌ Amount mismatch:", amount, order.total);
       return new Response("Amount mismatch", { status: 400 });
     }
 
-    // =========================
-    // 🔁 DUPLICATE PROTECTION
-    // =========================
+    // 🔁 Prevent duplicate update
     if (order.payment_status === "paid") {
+      console.log("⚠️ Already processed");
       return new Response("Already processed");
     }
 
-    // =========================
-    // 💾 UPDATE ORDER
-    // =========================
+    const statusUpper = String(status).toUpperCase();
 
-    if (status === "SUCCESS" || status === "success") {
+    if (statusUpper === "SUCCESS") {
+      console.log("✅ Payment SUCCESS");
+
       await supabase
         .from("orders")
         .update({
@@ -65,19 +65,23 @@ export async function POST(req) {
           payment_id,
           status: "processing",
         })
-        .eq("id", order_id);
+        .eq("order_number", order_id);
+
     } else {
+      console.log("❌ Payment FAILED:", status);
+
       await supabase
         .from("orders")
         .update({
           payment_status: "failed",
         })
-        .eq("id", order_id);
+        .eq("order_number", order_id);
     }
 
     return new Response("OK");
+
   } catch (err) {
-    console.error("WEBHOOK ERROR:", err);
+    console.error("💥 WEBHOOK ERROR:", err);
     return new Response("Server Error", { status: 500 });
   }
 }

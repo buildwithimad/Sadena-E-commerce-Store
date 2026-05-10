@@ -29,7 +29,6 @@ export default async function HomePage({ params }) {
     getHomeProducts(lang)
   ]);
 
-  console.log("Categories from Home", categories)
 
   return (
     <>

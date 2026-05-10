@@ -161,9 +161,13 @@ export default function CheckoutClient({ lang, t }) {
 
       // ✅ CARD FLOW
       if (paymentMethod === "card") {
-        const payment = data.payment;
+        if (paymentMethod === "card") {
+  if (!data.payment_url) {
+    throw new Error("Payment initialization failed");
+  }
 
-        if (!payment) throw new Error("Payment initialization failed");
+  window.location.href = data.payment_url;
+}
 
         const PAYMENT_URL = process.env.NEXT_PUBLIC_AVAPAY_URL;
         if (!PAYMENT_URL) throw new Error("Payment gateway is not configured yet");
